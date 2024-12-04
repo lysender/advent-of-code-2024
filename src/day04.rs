@@ -137,7 +137,11 @@ fn find_patterns(matrix: &Vec<Vec<u8>>, x: i32, y: i32, max_x: i32, max_y: i32) 
 }
 
 fn find_x_patterns(matrix: &Vec<Vec<u8>>, x: i32, y: i32, max_x: i32, max_y: i32) -> i32 {
-    // Find the X pattern forming M-A-S
+    // Find pattern that looks like X of MAS, including reverse like SAM
+    // A must be always at the center to make this work
+    // M - S
+    // - A -
+    // M - S
     let nw_x = x - 1;
     let nw_y = y - 1;
     let ne_x = x + 1;
@@ -148,80 +152,44 @@ fn find_x_patterns(matrix: &Vec<Vec<u8>>, x: i32, y: i32, max_x: i32, max_y: i32
     let se_y = y + 1;
 
     // Check bounds
-    if nw_x < 0 || nw_y < 0 || nw_x >= max_x || nw_y >= max_y {
-        return 0;
+    let mut valid_bounds = false;
+    if nw_x >= 0 && nw_x < max_x && nw_y >= 0 && nw_y < max_y {
+        if ne_x >= 0 && ne_x < max_x && ne_y >= 0 && ne_y < max_y {
+            if sw_x >= 0 && sw_x < max_x && sw_y >= 0 && sw_y < max_y {
+                if se_x >= 0 && se_x < max_x && se_y >= 0 && se_y < max_y {
+                    valid_bounds = true;
+                }
+            }
+        }
     }
-    if ne_x < 0 || ne_y < 0 || ne_x >= max_x || ne_y >= max_y {
-        return 0;
-    }
-    if sw_x < 0 || sw_y < 0 || sw_x >= max_x || sw_y >= max_y {
-        return 0;
-    }
-    if se_x < 0 || se_y < 0 || se_x >= max_x || se_y >= max_y {
+
+    if !valid_bounds {
         return 0;
     }
 
-    // Check the values
     // Center must be A
     if matrix[x as usize][y as usize] == CA {
-        // Pattern 1: MAS, MAS
-        // North west must be M
-        if matrix[nw_x as usize][nw_y as usize] == CM {
-            // North east must be S
-            if matrix[ne_x as usize][ne_y as usize] == CS {
-                // South west must be M
-                if matrix[sw_x as usize][sw_y as usize] == CM {
-                    // South east must be S
-                    if matrix[se_x as usize][se_y as usize] == CS {
-                        return 1;
-                    }
-                }
-            }
+        // Diagonal NW to SE must be M-S or S-M
+        let mut valid_d1 = false;
+        if (matrix[nw_x as usize][nw_y as usize] == CM
+            && matrix[se_x as usize][se_y as usize] == CS)
+            || (matrix[nw_x as usize][nw_y as usize] == CS
+                && matrix[se_x as usize][se_y as usize] == CM)
+        {
+            valid_d1 = true;
+        }
+        // Diagonal SW to NE must be M-S or S-M
+        let mut valid_d2 = false;
+        if (matrix[sw_x as usize][sw_y as usize] == CM
+            && matrix[ne_x as usize][ne_y as usize] == CS)
+            || (matrix[sw_x as usize][sw_y as usize] == CS
+                && matrix[ne_x as usize][ne_y as usize] == CM)
+        {
+            valid_d2 = true;
         }
 
-        // Pattern 2: MAS, SAM
-        // North west must be M
-        if matrix[nw_x as usize][nw_y as usize] == CM {
-            // North east must be M
-            if matrix[ne_x as usize][ne_y as usize] == CM {
-                // South west must be S
-                if matrix[sw_x as usize][sw_y as usize] == CS {
-                    // South east must be S
-                    if matrix[se_x as usize][se_y as usize] == CS {
-                        return 1;
-                    }
-                }
-            }
-        }
-
-        // Pattern 3: SAM, SAM
-        // North west must be S
-        if matrix[nw_x as usize][nw_y as usize] == CS {
-            // North east must be M
-            if matrix[ne_x as usize][ne_y as usize] == CM {
-                // South west must be S
-                if matrix[sw_x as usize][sw_y as usize] == CS {
-                    // South east must be M
-                    if matrix[se_x as usize][se_y as usize] == CM {
-                        return 1;
-                    }
-                }
-            }
-        }
-
-        // Pattern 4: SAM, MAS
-        // North west must be S
-        if matrix[nw_x as usize][nw_y as usize] == CS {
-            // North east must be S
-            if matrix[ne_x as usize][ne_y as usize] == CS {
-                // South west must be M
-                if matrix[sw_x as usize][sw_y as usize] == CM {
-                    // South east must be M
-                    if matrix[se_x as usize][se_y as usize] == CM {
-                        return 1;
-                    }
-                }
-            }
+        if valid_d1 && valid_d2 {
+            return 1;
         }
     }
 
