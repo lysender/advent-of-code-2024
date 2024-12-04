@@ -1,9 +1,11 @@
 use std::path::Path;
 use std::{fs, path::PathBuf};
 
+pub mod day00;
 pub mod day01;
 pub mod day02;
 pub mod day03;
+pub mod day04;
 
 pub fn get_puzzle_input(name: &str) -> String {
     let file = format!("day{}.txt", name);

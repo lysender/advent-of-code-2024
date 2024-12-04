@@ -20,6 +20,10 @@ codegen-units = 1
 panic = "abort"
 
 [[bench]]
+name = "day00"
+harness = false
+
+[[bench]]
 name = "day01"
 harness = false
 
@@ -29,4 +33,8 @@ harness = false
 
 [[bench]]
 name = "day03"
+harness = false
+
+[[bench]]
+name = "day04"
 harness = false
