@@ -41,15 +41,11 @@ pub fn part2(input: &str) -> i32 {
 }
 
 fn solve_expressions(input: &str, always_on: bool) -> i32 {
-    let total: i32 = parse_expressions(input, always_on)
-        .iter()
-        .map(|pair| pair.mul())
-        .sum();
-    total
+    parse_expressions(input, always_on)
 }
 
-fn parse_expressions(input: &str, always_on: bool) -> Vec<Pair> {
-    let mut pairs: Vec<Pair> = Vec::new();
+fn parse_expressions(input: &str, always_on: bool) -> i32 {
+    let mut total: i32 = 0;
 
     let max_len = input.len();
     let mut buffer = &input[..];
@@ -74,14 +70,14 @@ fn parse_expressions(input: &str, always_on: bool) -> Vec<Pair> {
             MarkerKind::Mul => {
                 if enabled {
                     if let Some(pair) = find_expression(buffer) {
-                        pairs.push(pair);
+                        total += pair.mul();
                     }
                 }
             }
         }
     }
 
-    pairs
+    total
 }
 
 fn find_marker(buffer: &str, always_on: bool) -> Option<Marker> {
