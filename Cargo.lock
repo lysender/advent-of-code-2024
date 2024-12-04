@@ -79,6 +79,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "day01"
+version = "0.1.0"
+dependencies = [
+ "input",
+ "itertools",
+ "nom",
+ "nom-supreme",
+]
+
+[[package]]
+name = "day02"
+version = "0.1.0"
+dependencies = [
+ "input",
+ "itertools",
+ "nom",
+ "nom-supreme",
+]
+
+[[package]]
+name = "day03"
+version = "0.1.0"
+dependencies = [
+ "input",
+ "itertools",
+ "nom",
+ "nom-supreme",
+]
+
+[[package]]
+name = "day04"
+version = "0.1.0"
+dependencies = [
+ "input",
+ "itertools",
+ "nom",
+ "nom-supreme",
+]
+
+[[package]]
+name = "day05"
+version = "0.1.0"
+dependencies = [
+ "input",
+ "itertools",
+ "nom",
+ "nom-supreme",
+]
+
+[[package]]
 name = "divan"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
