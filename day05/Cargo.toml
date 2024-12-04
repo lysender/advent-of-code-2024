@@ -13,5 +13,6 @@ nom-supreme = "0.8.0"
 divan = "0.1.4"
 
 [[bench]]
-name = "benchmarks"
+name = "day05-bench"
+path = "benches/benchmarks.rs"
 harness = false
