@@ -82,6 +82,7 @@ dependencies = [
 name = "day01"
 version = "0.1.0"
 dependencies = [
+ "divan",
  "input",
  "itertools",
  "nom",
@@ -92,6 +93,7 @@ dependencies = [
 name = "day02"
 version = "0.1.0"
 dependencies = [
+ "divan",
  "input",
  "itertools",
  "nom",
@@ -102,6 +104,7 @@ dependencies = [
 name = "day03"
 version = "0.1.0"
 dependencies = [
+ "divan",
  "input",
  "itertools",
  "nom",
@@ -112,6 +115,7 @@ dependencies = [
 name = "day04"
 version = "0.1.0"
 dependencies = [
+ "divan",
  "input",
  "itertools",
  "nom",
@@ -122,6 +126,7 @@ dependencies = [
 name = "day05"
 version = "0.1.0"
 dependencies = [
+ "divan",
  "input",
  "itertools",
  "nom",
