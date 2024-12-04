@@ -5,12 +5,12 @@ edition = "2021"
 
 [dependencies]
 input = { path = "../input" }
-itertools = "0.13.0"
-nom = "7.1.3"
-nom-supreme = "0.8.0"
+itertools.workspace = true
+nom.workspace = true
+nom-supreme.workspace = true
 
 [dev-dependencies]
-divan = "0.1.4"
+divan.workspace = true
 
 [[bench]]
 name = "day04-bench"
