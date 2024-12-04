@@ -19,7 +19,7 @@ pub fn part1(input: &str) -> i32 {
 }
 
 pub fn part2(input: &str) -> i32 {
-    solve_puzzle(input)
+    solve_x_puzzle(input)
 }
 
 fn solve_puzzle(input: &str) -> i32 {
@@ -39,6 +39,29 @@ fn solve_puzzle(input: &str) -> i32 {
         for y in 0..col_len {
             let patterns =
                 find_patterns(&table, x as i32, y as i32, row_len as i32, col_len as i32);
+            total += patterns;
+        }
+    }
+    total
+}
+
+fn solve_x_puzzle(input: &str) -> i32 {
+    let table = parse_matrix(input);
+    let row_len = table.len();
+    if row_len == 0 {
+        return 0;
+    }
+    let col_len = table[0].len();
+    if col_len == 0 {
+        return 0;
+    }
+
+    let mut total: i32 = 0;
+
+    for x in 0..row_len {
+        for y in 0..col_len {
+            let patterns =
+                find_x_patterns(&table, x as i32, y as i32, row_len as i32, col_len as i32);
             total += patterns;
         }
     }
@@ -113,6 +136,98 @@ fn find_patterns(matrix: &Vec<Vec<u8>>, x: i32, y: i32, max_x: i32, max_y: i32) 
     result
 }
 
+fn find_x_patterns(matrix: &Vec<Vec<u8>>, x: i32, y: i32, max_x: i32, max_y: i32) -> i32 {
+    // Find the X pattern forming M-A-S
+    let nw_x = x - 1;
+    let nw_y = y - 1;
+    let ne_x = x + 1;
+    let ne_y = y - 1;
+    let sw_x = x - 1;
+    let sw_y = y + 1;
+    let se_x = x + 1;
+    let se_y = y + 1;
+
+    // Check bounds
+    if nw_x < 0 || nw_y < 0 || nw_x >= max_x || nw_y >= max_y {
+        return 0;
+    }
+    if ne_x < 0 || ne_y < 0 || ne_x >= max_x || ne_y >= max_y {
+        return 0;
+    }
+    if sw_x < 0 || sw_y < 0 || sw_x >= max_x || sw_y >= max_y {
+        return 0;
+    }
+    if se_x < 0 || se_y < 0 || se_x >= max_x || se_y >= max_y {
+        return 0;
+    }
+
+    // Check the values
+    // Center must be A
+    if matrix[x as usize][y as usize] == CA {
+        // Pattern 1: MAS, MAS
+        // North west must be M
+        if matrix[nw_x as usize][nw_y as usize] == CM {
+            // North east must be S
+            if matrix[ne_x as usize][ne_y as usize] == CS {
+                // South west must be M
+                if matrix[sw_x as usize][sw_y as usize] == CM {
+                    // South east must be S
+                    if matrix[se_x as usize][se_y as usize] == CS {
+                        return 1;
+                    }
+                }
+            }
+        }
+
+        // Pattern 2: MAS, SAM
+        // North west must be M
+        if matrix[nw_x as usize][nw_y as usize] == CM {
+            // North east must be M
+            if matrix[ne_x as usize][ne_y as usize] == CM {
+                // South west must be S
+                if matrix[sw_x as usize][sw_y as usize] == CS {
+                    // South east must be S
+                    if matrix[se_x as usize][se_y as usize] == CS {
+                        return 1;
+                    }
+                }
+            }
+        }
+
+        // Pattern 3: SAM, SAM
+        // North west must be S
+        if matrix[nw_x as usize][nw_y as usize] == CS {
+            // North east must be M
+            if matrix[ne_x as usize][ne_y as usize] == CM {
+                // South west must be S
+                if matrix[sw_x as usize][sw_y as usize] == CS {
+                    // South east must be M
+                    if matrix[se_x as usize][se_y as usize] == CM {
+                        return 1;
+                    }
+                }
+            }
+        }
+
+        // Pattern 4: SAM, MAS
+        // North west must be S
+        if matrix[nw_x as usize][nw_y as usize] == CS {
+            // North east must be S
+            if matrix[ne_x as usize][ne_y as usize] == CS {
+                // South west must be M
+                if matrix[sw_x as usize][sw_y as usize] == CM {
+                    // South east must be M
+                    if matrix[se_x as usize][se_y as usize] == CM {
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+
+    0
+}
+
 #[cfg(test)]
 mod tests {
     use crate::get_puzzle_input;
@@ -129,7 +244,7 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = get_puzzle_input("04-sample");
-        let result = solve_puzzle(input.as_str());
-        assert_eq!(result, 18);
+        let result = solve_x_puzzle(input.as_str());
+        assert_eq!(result, 9);
     }
 }
