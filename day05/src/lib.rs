@@ -169,7 +169,6 @@ fn solve_puzzle2(data: &str) -> i32 {
             if !worker.valid_pages(cur_pages) {
                 // Fix invalid page
                 let fixed = fix_invalid_pages(&mut worker, cur_pages);
-                println!("{:?}", fixed);
                 // Get middle value and add result
                 result += find_middle_val(&fixed);
             }
@@ -186,13 +185,6 @@ fn fix_invalid_pages(worker: &mut PageRuleMap, pages: &Vec<i32>) -> Vec<i32> {
     let mut left_valid = false;
     let mut breaker = 0;
     while !left_valid {
-        // println!("Reset from top");
-        // For each element, check if any of the items to the left are invalid
-        // If there is an invalid element found then:
-        //   Copy the invalid element and put it after the current element
-        //   Remove the invalid element
-        //   Start over
-        // Move on to the next element
         let mut valid_count = 0;
         for i in 0..pages.len() {
             // Find the broken element
@@ -201,33 +193,85 @@ fn fix_invalid_pages(worker: &mut PageRuleMap, pages: &Vec<i32>) -> Vec<i32> {
                     valid_count += 1;
                 }
                 Err(pos) => {
+                    // Move the invalid element to the right side
                     let broken = result[pos];
-                    // Insert new element next to current
-                    result.insert(i + 1, broken);
-                    // Remove the invalid element
                     result.remove(pos);
+                    result.insert(i, broken);
+
+                    // Keep moving it to the right until end of line or when all is valid
+                    let mut inner_valid = false;
+                    let mut ipos = i;
+
+                    while ipos < pages.len() - 1 && !inner_valid {
+                        inner_valid = worker.valid_lefts(i, &result).is_ok();
+                        if !inner_valid {
+                            // Swap value to the right
+                            let tmp = result[ipos + 1];
+                            result[ipos + 1] = result[ipos];
+                            result[ipos] = tmp;
+                            ipos += 1;
+                        }
+                    }
+
                     // Start over
                     break;
                 }
             }
         }
 
-        println!("valid_count: {}", valid_count);
         left_valid = valid_count == pages.len();
 
         breaker += 1;
-        if breaker > 100 {
-            println!("breaker...");
+        if breaker > 1000 {
+            println!("left breaker...");
             break;
         }
     }
 
-    //for i in 1..pages.len() {
-    //    // Find broken element
-    //    if let Err(pos) = valid_right_rules(i, rules, pages, &map) {
-    //        // println!("RIGHT: Broken page: {} at {}", pages[pos], pos);
-    //    }
-    //}
+    let mut right_valid = false;
+    let mut breaker = 0;
+    while !right_valid {
+        let mut valid_count = 0;
+        for i in 0..result.len() {
+            // Find the broken element
+            match worker.valid_rights(i, &result) {
+                Ok(_) => {
+                    valid_count += 1;
+                }
+                Err(pos) => {
+                    let broken = result[pos];
+                    result.remove(pos);
+                    result.insert(i, broken);
+
+                    // Keep moving it to the left until beginning or when all is valid
+                    let mut inner_valid = false;
+                    let mut ipos = i;
+
+                    while ipos > 0 && !inner_valid {
+                        inner_valid = worker.valid_rights(i, &result).is_ok();
+                        if !inner_valid {
+                            // Swap value to the left
+                            let tmp = result[ipos - 1];
+                            result[ipos - 1] = result[ipos];
+                            result[ipos] = tmp;
+                            ipos -= 1;
+                        }
+                    }
+
+                    // Start over
+                    break;
+                }
+            }
+        }
+
+        right_valid = valid_count == pages.len();
+
+        breaker += 1;
+        if breaker > 1000 {
+            println!("right breaker...");
+            break;
+        }
+    }
 
     result
 }
