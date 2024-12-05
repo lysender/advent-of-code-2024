@@ -212,9 +212,6 @@ fn fix_invalid_pages(worker: &mut PageRuleMap, pages: &Vec<i32>) -> Vec<i32> {
                             ipos += 1;
                         }
                     }
-
-                    // Start over
-                    break;
                 }
             }
         }
@@ -257,9 +254,6 @@ fn fix_invalid_pages(worker: &mut PageRuleMap, pages: &Vec<i32>) -> Vec<i32> {
                             ipos -= 1;
                         }
                     }
-
-                    // Start over
-                    break;
                 }
             }
         }
