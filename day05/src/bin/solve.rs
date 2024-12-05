@@ -7,13 +7,13 @@ fn main() {
 }
 
 pub fn run_part1() {
-    let input_string = get_puzzle_input("00");
+    let input_string = get_puzzle_input("05");
     let result = part1(input_string.as_str());
     println!("Result: {}", result);
 }
 
 pub fn run_part2() {
-    let input_string = get_puzzle_input("00");
+    let input_string = get_puzzle_input("05");
     let result = part2(input_string.as_str());
     println!("Result: {}", result);
 }
