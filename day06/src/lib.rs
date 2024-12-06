@@ -10,7 +10,7 @@ const CH_GR: u8 = b'>';
 const CH_GD: u8 = b'v';
 const CH_GL: u8 = b'<';
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum Dir {
     Up,
     Right,
@@ -53,9 +53,18 @@ impl Guard {
     fn set_pos(&mut self, pos: IVec2) {
         self.pos = pos;
     }
+
+    fn get_sorround(&self) -> Vec<IVec2> {
+        vec![
+            self.pos + IVec2::new(-1, 0),
+            self.pos + IVec2::new(0, 1),
+            self.pos + IVec2::new(1, 0),
+            self.pos + IVec2::new(0, -1),
+        ]
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum CellItem {
     Empty,
     Obs,
@@ -93,7 +102,7 @@ impl Grid {
         }
     }
 
-    fn next(&mut self) -> Option<CellItem> {
+    fn jump_next(&mut self) -> Option<CellItem> {
         if self.is_edge() {
             return None;
         }
@@ -126,22 +135,33 @@ impl Grid {
         }
     }
 
-    fn rotate_guard(&mut self) {
-        self.guard.rotate();
+    /// Moves next and rotates if necessary
+    fn next(&mut self) -> Option<CellItem> {
+        match self.jump_next() {
+            Some(c) => match c {
+                CellItem::Empty => Some(CellItem::Empty),
+                CellItem::Obs => {
+                    self.guard.rotate();
+                    self.jump_next()
+                }
+                _ => panic!("Not expecting anything other than empty of obs"),
+            },
+            None => None,
+        }
     }
 
-    fn print(self) {
-        for row in self.matrix.iter() {
-            let row_chars: Vec<char> = row
-                .iter()
-                .map(|item| match item {
-                    CellItem::Empty => '.',
-                    CellItem::Obs => '#',
-                    CellItem::Guard => 'x',
-                })
-                .collect();
-            println!("{:?}", row_chars);
+    fn empty_space(&self, pos: &IVec2) -> bool {
+        if pos.x >= 0 && pos.y >= 0 && pos.x <= self.max_x && pos.y <= self.max_y {
+            return match self.matrix[pos.x as usize][pos.y as usize] {
+                CellItem::Empty => true,
+                _ => false,
+            };
         }
+        false
+    }
+
+    fn fill_obs(&mut self, pos: &IVec2) {
+        self.matrix[pos.x as usize][pos.y as usize] = CellItem::Obs;
     }
 }
 
@@ -150,7 +170,7 @@ pub fn part1(data: &str) -> i32 {
 }
 
 pub fn part2(data: &str) -> i32 {
-    solve_puzzle2(data)
+    solve_puzzle_loops(data)
 }
 
 fn solve_puzzle(data: &str) -> i32 {
@@ -159,40 +179,76 @@ fn solve_puzzle(data: &str) -> i32 {
     let mut moves: HashSet<IVec2> = HashSet::new();
     moves.insert(grid.guard.pos.clone());
 
-    while let Some(item) = grid.next() {
-        match item {
-            CellItem::Empty => {
-                moves.insert(grid.guard.pos.clone());
-            }
-            CellItem::Obs => {
-                grid.rotate_guard();
-            }
-            _ => panic!("Not expecting other items"),
-        }
+    while let Some(_) = grid.next() {
+        moves.insert(grid.guard.pos.clone());
     }
 
     moves.len() as i32
 }
 
-fn solve_puzzle2(data: &str) -> i32 {
-    let mut grid = parse_data(data);
+fn solve_puzzle_loops(data: &str) -> i32 {
+    // Run once to find all cells where we can insert an obstruction
+    // Candicate cells are within the original path
+    let orig_grid = parse_data(data);
+    let mut grid = orig_grid.clone();
+    let start_pos = grid.guard.pos.clone();
+    let mut blockers: HashSet<IVec2> = HashSet::new();
 
-    let mut moves: HashSet<IVec2> = HashSet::new();
-    moves.insert(grid.guard.pos.clone());
-
-    while let Some(item) = grid.next() {
-        match item {
-            CellItem::Empty => {
-                moves.insert(grid.guard.pos.clone());
-            }
-            CellItem::Obs => {
-                grid.rotate_guard();
-            }
-            _ => panic!("Not expecting other items"),
+    while let Some(_) = grid.next() {
+        for v in grid.guard.get_sorround().into_iter() {
+            blockers.insert(v);
         }
     }
 
-    moves.len() as i32
+    // Ensure to remove the starting pos
+    blockers.remove(&start_pos);
+
+    let mut result = 0;
+
+    for v in blockers.iter() {
+        let mut test_grid = orig_grid.clone();
+        if test_grid.empty_space(v) {
+            test_grid.fill_obs(v);
+            if has_loop(test_grid) {
+                result += 1;
+            }
+        }
+    }
+
+    result
+}
+
+fn has_loop(mut grid: Grid) -> bool {
+    let mut fast_grid = grid.clone();
+    let mut looping = false;
+
+    loop {
+        let g1 = grid.next();
+        fast_grid.next();
+        let g2 = fast_grid.next();
+
+        match (g1, g2) {
+            (None, None) => {
+                break;
+            }
+            (None, Some(_)) => {
+                break;
+            }
+            (Some(_), None) => {
+                break;
+            }
+            (Some(_), Some(_)) => {
+                // Compare the positions of the guards
+                if grid.guard.pos.eq(&fast_grid.guard.pos) && grid.guard.dir == fast_grid.guard.dir
+                {
+                    looping = true;
+                    break;
+                }
+            }
+        };
+    }
+
+    looping
 }
 
 fn parse_data(data: &str) -> Grid {
@@ -276,6 +332,34 @@ mod tests {
     }
 
     #[test]
+    fn test_loop1() {
+        let data = get_puzzle_input("06-sample-loop1");
+        let grid = parse_data(data.as_str());
+        assert!(has_loop(grid));
+    }
+
+    #[test]
+    fn test_loop2() {
+        let data = get_puzzle_input("06-sample-loop2");
+        let grid = parse_data(data.as_str());
+        assert!(has_loop(grid));
+    }
+
+    #[test]
+    fn test_loop3() {
+        let data = get_puzzle_input("06-sample-loop3");
+        let grid = parse_data(data.as_str());
+        assert!(has_loop(grid));
+    }
+
+    #[test]
+    fn test_no_loop() {
+        let data = get_puzzle_input("06-sample");
+        let grid = parse_data(data.as_str());
+        assert!(!has_loop(grid));
+    }
+
+    #[test]
     fn test_part1() {
         let input = get_puzzle_input("06-sample");
         let result = solve_puzzle(input.as_str());
@@ -285,7 +369,7 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = get_puzzle_input("06-sample");
-        let result = solve_puzzle2(input.as_str());
+        let result = solve_puzzle_loops(input.as_str());
         assert_eq!(result, 6);
     }
 }
