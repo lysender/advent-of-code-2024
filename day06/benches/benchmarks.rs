@@ -7,12 +7,12 @@ fn main() {
 
 #[divan::bench]
 fn part1_bench() {
-    let input_string = get_puzzle_input("00");
+    let input_string = get_puzzle_input("06");
     part1(divan::black_box(input_string.as_str()));
 }
 
 #[divan::bench]
 fn part2_bench() {
-    let input_string = get_puzzle_input("00");
+    let input_string = get_puzzle_input("06");
     part2(divan::black_box(input_string.as_str()));
 }
