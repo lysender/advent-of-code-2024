@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use nom::{
     character::complete::{self, char, line_ending},
@@ -22,23 +22,8 @@ struct Rule {
 }
 
 #[derive(Debug)]
-struct PageRule {
-    rights: HashSet<i32>,
-    lefts: HashSet<i32>,
-}
-
-impl PageRule {
-    fn new() -> Self {
-        PageRule {
-            rights: HashSet::new(),
-            lefts: HashSet::new(),
-        }
-    }
-}
-
-#[derive(Debug)]
 struct PageRuleMap {
-    map: HashMap<i32, PageRule>,
+    map: HashMap<i32, Vec<i32>>,
     rules: Vec<Rule>,
 }
 
@@ -55,7 +40,6 @@ impl PageRuleMap {
             return;
         }
 
-        let mut page_rules = PageRule::new();
         let rights: Vec<i32> = self
             .rules
             .iter()
@@ -66,21 +50,8 @@ impl PageRuleMap {
                 None
             })
             .collect();
-        let lefts: Vec<i32> = self
-            .rules
-            .iter()
-            .filter_map(|l| {
-                if l.right == page {
-                    return Some(l.left);
-                }
-                None
-            })
-            .collect();
 
-        page_rules.rights = HashSet::from_iter(rights.into_iter());
-        page_rules.lefts = HashSet::from_iter(lefts.into_iter());
-
-        self.map.insert(page, page_rules);
+        self.map.insert(page, rights);
     }
 
     fn valid_pages(&mut self, pages: &Vec<i32>) -> bool {
@@ -93,7 +64,7 @@ impl PageRuleMap {
     }
 
     fn valid_page(&mut self, index: usize, pages: &Vec<i32>) -> bool {
-        self.valid_lefts(index, pages).is_ok() && self.valid_rights(index, pages).is_ok()
+        self.valid_lefts(index, pages).is_ok()
     }
 
     fn valid_lefts(&mut self, index: usize, pages: &Vec<i32>) -> Result<(), usize> {
@@ -106,32 +77,10 @@ impl PageRuleMap {
         self.register_rules(val);
 
         // All values to the left must not be listed in the right rules
-        if let Some(page_rules) = self.map.get(&val) {
+        if let Some(rights) = self.map.get(&val) {
             let buffer = &pages[..index];
             for (k, v) in buffer.iter().enumerate() {
-                if page_rules.rights.contains(v) {
-                    return Err(k);
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn valid_rights(&mut self, index: usize, pages: &Vec<i32>) -> Result<(), usize> {
-        if index >= pages.len() - 1 {
-            // Nothing else to check beyond this point
-            return Ok(());
-        }
-
-        let val = pages[index];
-        self.register_rules(val);
-
-        // All values to the right must not be listed in the lefts rules
-        if let Some(page_rules) = self.map.get(&val) {
-            let buffer = &pages[(index + 1)..];
-            for (k, v) in buffer.iter().enumerate() {
-                if page_rules.lefts.contains(v) {
+                if rights.contains(v) {
                     return Err(k);
                 }
             }
@@ -219,50 +168,8 @@ fn fix_invalid_pages(worker: &mut PageRuleMap, pages: &Vec<i32>) -> Vec<i32> {
         left_valid = valid_count == pages.len();
 
         breaker += 1;
-        if breaker > 1000 {
+        if breaker > 100 {
             println!("left breaker...");
-            break;
-        }
-    }
-
-    let mut right_valid = false;
-    let mut breaker = 0;
-    while !right_valid {
-        let mut valid_count = 0;
-        for i in 0..result.len() {
-            // Find the broken element
-            match worker.valid_rights(i, &result) {
-                Ok(_) => {
-                    valid_count += 1;
-                }
-                Err(pos) => {
-                    let broken = result[pos];
-                    result.remove(pos);
-                    result.insert(i, broken);
-
-                    // Keep moving it to the left until beginning or when all is valid
-                    let mut inner_valid = false;
-                    let mut ipos = i;
-
-                    while ipos > 0 && !inner_valid {
-                        inner_valid = worker.valid_rights(i, &result).is_ok();
-                        if !inner_valid {
-                            // Swap value to the left
-                            let tmp = result[ipos - 1];
-                            result[ipos - 1] = result[ipos];
-                            result[ipos] = tmp;
-                            ipos -= 1;
-                        }
-                    }
-                }
-            }
-        }
-
-        right_valid = valid_count == pages.len();
-
-        breaker += 1;
-        if breaker > 1000 {
-            println!("right breaker...");
             break;
         }
     }
