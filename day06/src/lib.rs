@@ -53,15 +53,6 @@ impl Guard {
     fn set_pos(&mut self, pos: IVec2) {
         self.pos = pos;
     }
-
-    fn get_sorround(&self) -> Vec<IVec2> {
-        vec![
-            self.pos + IVec2::new(-1, 0),
-            self.pos + IVec2::new(0, 1),
-            self.pos + IVec2::new(1, 0),
-            self.pos + IVec2::new(0, -1),
-        ]
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -195,9 +186,7 @@ fn solve_puzzle_loops(data: &str) -> i32 {
     let mut blockers: HashSet<IVec2> = HashSet::new();
 
     while let Some(_) = grid.next() {
-        for v in grid.guard.get_sorround().into_iter() {
-            blockers.insert(v);
-        }
+        blockers.insert(grid.guard.pos.clone());
     }
 
     // Ensure to remove the starting pos
