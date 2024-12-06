@@ -150,12 +150,11 @@ pub fn part1(data: &str) -> i32 {
 }
 
 pub fn part2(data: &str) -> i32 {
-    solve_puzzle(data)
+    solve_puzzle2(data)
 }
 
 fn solve_puzzle(data: &str) -> i32 {
     let mut grid = parse_data(data);
-    let mut breaker = 0;
 
     let mut moves: HashSet<IVec2> = HashSet::new();
     moves.insert(grid.guard.pos.clone());
@@ -170,11 +169,26 @@ fn solve_puzzle(data: &str) -> i32 {
             }
             _ => panic!("Not expecting other items"),
         }
+    }
 
-        breaker += 1;
-        if breaker > 100000 {
-            println!("Breaker...");
-            break;
+    moves.len() as i32
+}
+
+fn solve_puzzle2(data: &str) -> i32 {
+    let mut grid = parse_data(data);
+
+    let mut moves: HashSet<IVec2> = HashSet::new();
+    moves.insert(grid.guard.pos.clone());
+
+    while let Some(item) = grid.next() {
+        match item {
+            CellItem::Empty => {
+                moves.insert(grid.guard.pos.clone());
+            }
+            CellItem::Obs => {
+                grid.rotate_guard();
+            }
+            _ => panic!("Not expecting other items"),
         }
     }
 
@@ -271,7 +285,7 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = get_puzzle_input("06-sample");
-        let result = solve_puzzle(input.as_str());
-        assert_eq!(result, 41);
+        let result = solve_puzzle2(input.as_str());
+        assert_eq!(result, 6);
     }
 }
