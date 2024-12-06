@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+glam.workspace = true
 input = { path = "../input" }
 itertools.workspace = true
 nom.workspace = true
