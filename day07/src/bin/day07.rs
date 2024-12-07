@@ -1,5 +1,7 @@
+use std::time::Instant;
+
 use day07::{part1, part2};
-use input::get_puzzle_input;
+use input::{format_duration, get_puzzle_input};
 
 fn main() {
     run_part1();
@@ -7,13 +9,25 @@ fn main() {
 }
 
 pub fn run_part1() {
+    let ts = Instant::now();
     let input_string = get_puzzle_input("07");
     let result = part1(input_string.as_str());
-    println!("Result: {}", result);
+    let duration = ts.elapsed();
+    println!(
+        "Result: {}, duration: {}",
+        result,
+        format_duration(duration)
+    );
 }
 
 pub fn run_part2() {
+    let ts = Instant::now();
     let input_string = get_puzzle_input("07");
     let result = part2(input_string.as_str());
-    println!("Result: {}", result);
+    let duration = ts.elapsed();
+    println!(
+        "Result: {}, duration: {}",
+        result,
+        format_duration(duration)
+    );
 }
