@@ -30,13 +30,7 @@ fn solve_puzzle(data: &str) -> i64 {
     let items = parse_data(data);
     items
         .iter()
-        .map(|item| {
-            let ops = get_valid_ops(item, &OPS);
-            if ops.len() > 0 {
-                return item.result;
-            }
-            return 0;
-        })
+        .map(|item| compute_callibration(item, &OPS))
         .sum()
 }
 
@@ -44,49 +38,45 @@ fn solve_puzzle2(data: &str) -> i64 {
     let items = parse_data(data);
     items
         .iter()
-        .map(|item| {
-            let ops = get_valid_ops(item, &OPS2);
-            if ops.len() > 0 {
-                return item.result;
-            }
-            return 0;
-        })
+        .map(|item| compute_callibration(item, &OPS2))
         .sum()
 }
 
-fn get_valid_ops(eq: &Equation, ops: &[char]) -> Vec<char> {
-    let all_ops = generate_ops(eq.numbers.len() - 1, ops);
-    for v in all_ops.iter() {
-        let result = solve_eq(&eq.numbers, v);
-        if result == eq.result {
-            return ops.to_vec();
-        }
-    }
-    vec![]
+fn compute_callibration(eq: &Equation, ops: &[char]) -> i64 {
+    let mut result: i64 = 0;
+    try_combinations(eq, &mut result, eq.numbers.len() - 1, ops);
+    result
 }
 
-fn generate_ops(size: usize, ops: &[char]) -> Vec<Vec<char>> {
-    let mut all_ops: Vec<Vec<char>> = Vec::new();
+fn try_combinations(eq: &Equation, result: &mut i64, size: usize, ops: &[char]) {
     let mut current: Vec<char> = vec![PLUS; size];
-    generate_ops_inner(size, ops, &mut current, &mut all_ops);
-    all_ops
+    generate_ops_inner(eq, result, size, ops, &mut current);
 }
 
 fn generate_ops_inner(
+    eq: &Equation,
+    result: &mut i64,
     size: usize,
     ops: &[char],
     current: &mut Vec<char>,
-    all_ops: &mut Vec<Vec<char>>,
 ) {
     if size == 0 {
         // A full list of operators just got completed
-        all_ops.push(current.clone());
+        // Try if this set solves the equation
+        if solve_eq(&eq.numbers, current) == eq.result {
+            *result = eq.result;
+        }
         return;
     }
 
     for ch in ops.iter() {
         current[size - 1] = *ch;
-        generate_ops_inner(size - 1, ops, current, all_ops);
+        generate_ops_inner(eq, result, size - 1, ops, current);
+
+        if *result > 0 {
+            // Already found an answer
+            return;
+        }
     }
 }
 
@@ -152,18 +142,6 @@ mod tests {
         let numbers: Vec<i64> = vec![10, 20, 30, 40];
         let ops: Vec<char> = vec![TIMES, PLUS, PLUS];
         assert_eq!(270, solve_eq(&numbers, &ops));
-    }
-
-    #[test]
-    fn test_gen_ops() {
-        let ops = generate_ops(4, &OPS);
-        assert_eq!(16, ops.len());
-    }
-
-    #[test]
-    fn test_gen_ops2() {
-        let ops = generate_ops(4, &OPS2);
-        assert_eq!(81, ops.len());
     }
 
     #[test]
