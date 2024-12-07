@@ -41,11 +41,15 @@ impl Guard {
 
     /// Compute the next position based on orientation
     fn forward(&self) -> IVec2 {
+        self.lookup_next(&self.pos)
+    }
+
+    fn lookup_next(&self, pos: &IVec2) -> IVec2 {
         match self.dir {
-            Dir::Up => self.pos + IVec2::new(-1, 0),
-            Dir::Right => self.pos + IVec2::new(0, 1),
-            Dir::Down => self.pos + IVec2::new(1, 0),
-            Dir::Left => self.pos + IVec2::new(0, -1),
+            Dir::Up => pos + IVec2::new(-1, 0),
+            Dir::Right => pos + IVec2::new(0, 1),
+            Dir::Down => pos + IVec2::new(1, 0),
+            Dir::Left => pos + IVec2::new(0, -1),
         }
     }
 
@@ -84,45 +88,29 @@ impl Grid {
         }
     }
 
-    fn is_edge(&self) -> bool {
-        match self.guard.dir {
-            Dir::Up => self.guard.pos.y == 0,
-            Dir::Right => self.guard.pos.x == self.max_x,
-            Dir::Down => self.guard.pos.y == self.max_y,
-            Dir::Left => self.guard.pos.x == 0,
-        }
-    }
-
     fn jump_next(&mut self) -> Option<CellItem> {
-        if self.is_edge() {
-            return None;
-        }
-
         let prev_pos = self.guard.pos;
         let pos = self.guard.forward();
 
-        // Make sure the new position is now out of bounds
-        if pos.x < 0 || pos.y < 0 || pos.x > self.max_x || pos.y > self.max_y {
-            return None;
-        }
+        match self.get_item(&pos) {
+            Some(val) => {
+                match *val {
+                    CellItem::Empty => {
+                        // Move the guard forward
+                        self.guard.set_pos(pos);
+                        // Set prev location empty
+                        self.fill_cell(&prev_pos, CellItem::Empty);
 
-        let item = &self.matrix[pos.x as usize][pos.y as usize];
-
-        match *item {
-            CellItem::Empty => {
-                // Move the guard forward
-                self.guard.set_pos(pos);
-                // Set the previous location empty
-                self.matrix[prev_pos.x as usize][prev_pos.y as usize] = CellItem::Empty;
-
-                // Inform that nothing is ahead
-                Some(CellItem::Empty)
+                        Some(CellItem::Empty)
+                    }
+                    CellItem::Obs => {
+                        // Do not move forward, only return the obs
+                        Some(CellItem::Obs)
+                    }
+                    _ => panic!("Not expecting anything other than empty or obs"),
+                }
             }
-            CellItem::Obs => {
-                // Do not move forward but return the obstruction
-                Some(CellItem::Obs)
-            }
-            _ => panic!("Not expecting anything other than empty of obs"),
+            None => None,
         }
     }
 
@@ -135,15 +123,47 @@ impl Grid {
                     self.guard.rotate();
                     self.jump_next()
                 }
-                _ => panic!("Not expecting anything other than empty of obs"),
+                _ => panic!("Not expecting anything other than empty or obs"),
             },
             None => None,
         }
     }
 
+    /// Jumps to the next obstacle or the edge
+    fn quick_next(&mut self) -> Option<CellItem> {
+        let orig_pos = self.guard.pos;
+        let mut prev_pos: Option<IVec2> = None;
+        let mut pos = self.guard.forward();
+
+        while let Some(item) = self.get_item(&pos) {
+            match item {
+                CellItem::Empty => {
+                    // Try to move forward again?
+                    prev_pos = Some(pos.clone());
+                    pos = self.guard.lookup_next(&pos);
+                }
+                CellItem::Obs => {
+                    if let Some(prev) = prev_pos {
+                        self.guard.set_pos(prev);
+                        self.fill_cell(&orig_pos, CellItem::Empty);
+                    }
+                    self.guard.rotate();
+                    return Some(CellItem::Empty);
+                }
+                _ => panic!("Not expecting anything other than empty or obs"),
+            }
+        }
+
+        None
+    }
+
+    fn is_inside(&self, pos: &IVec2) -> bool {
+        pos.x >= 0 && pos.y >= 0 && pos.x <= self.max_x && pos.y <= self.max_y
+    }
+
     fn empty_space(&self, pos: &IVec2) -> bool {
-        if pos.x >= 0 && pos.y >= 0 && pos.x <= self.max_x && pos.y <= self.max_y {
-            return match self.matrix[pos.x as usize][pos.y as usize] {
+        if let Some(item) = self.get_item(pos) {
+            return match *item {
                 CellItem::Empty => true,
                 _ => false,
             };
@@ -152,7 +172,18 @@ impl Grid {
     }
 
     fn fill_obs(&mut self, pos: &IVec2) {
-        self.matrix[pos.x as usize][pos.y as usize] = CellItem::Obs;
+        self.fill_cell(pos, CellItem::Obs);
+    }
+
+    fn fill_cell(&mut self, pos: &IVec2, value: CellItem) {
+        self.matrix[pos.x as usize][pos.y as usize] = value;
+    }
+
+    fn get_item(&self, pos: &IVec2) -> Option<&CellItem> {
+        if self.is_inside(pos) {
+            return Some(&self.matrix[pos.x as usize][pos.y as usize]);
+        }
+        None
     }
 }
 
@@ -212,9 +243,9 @@ fn has_loop(mut grid: Grid) -> bool {
     let mut looping = false;
 
     loop {
-        let g1 = grid.next();
-        fast_grid.next();
-        let g2 = fast_grid.next();
+        let g1 = grid.quick_next();
+        fast_grid.quick_next();
+        let g2 = fast_grid.quick_next();
 
         match (g1, g2) {
             (None, None) => {
@@ -306,18 +337,6 @@ mod tests {
         let next_pos = guard.forward();
 
         assert_eq!(next_pos, IVec2::new(4, 5));
-    }
-
-    #[test]
-    fn test_edge() {
-        let pos = IVec2::new(1, 0);
-        let guard = Guard::new(pos, Dir::Right);
-        let matrix = vec![
-            vec![CellItem::Empty, CellItem::Guard],
-            vec![CellItem::Empty, CellItem::Empty],
-        ];
-        let grid = Grid::new(matrix, guard);
-        assert!(grid.is_edge());
     }
 
     #[test]
