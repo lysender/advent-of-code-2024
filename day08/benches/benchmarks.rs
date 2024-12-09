@@ -13,6 +13,6 @@ fn part1_bench() {
 
 #[divan::bench]
 fn part2_bench() {
-    let input_string = get_puzzle_input("09");
+    let input_string = get_puzzle_input("08");
     part2(divan::black_box(input_string.as_str()));
 }
