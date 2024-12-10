@@ -1,19 +1,41 @@
-pub fn part1(input: &str) -> i32 {
+pub fn part1(input: &str) -> i64 {
     solve_puzzle(input)
 }
 
-pub fn part2(input: &str) -> i32 {
-    solve_puzzle(input)
+pub fn part2(input: &str) -> i64 {
+    solve_puzzle_contiguous(input)
 }
 
-fn solve_puzzle(data: &str) -> i32 {
+fn solve_puzzle(data: &str) -> i64 {
     let blocks = parse_data(data);
-    print_blocks(&blocks);
     let mut entries = format_blocks(&blocks);
-    print_disk_entries(&entries);
     defrag_entries(&mut entries);
-    print_disk_entries(&entries);
-    0
+
+    let total: i64 = entries
+        .iter()
+        .enumerate()
+        .map(|(k, b)| match b {
+            DiskEntry::File(f) => f.id as i64 * (k as i64),
+            DiskEntry::Space => 0,
+        })
+        .sum();
+    total
+}
+
+fn solve_puzzle_contiguous(data: &str) -> i64 {
+    let blocks = parse_data(data);
+    let mut entries = format_blocks(&blocks);
+    defrag_entries(&mut entries);
+
+    let total: i64 = entries
+        .iter()
+        .enumerate()
+        .map(|(k, b)| match b {
+            DiskEntry::File(f) => f.id as i64 * (k as i64),
+            DiskEntry::Space => 0,
+        })
+        .sum();
+    total
 }
 
 #[derive(Debug, Clone)]
@@ -222,7 +244,7 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = get_puzzle_input("09-sample");
-        let result = solve_puzzle(input.as_str());
-        assert_eq!(result, 1928);
+        let result = solve_puzzle_contiguous(input.as_str());
+        assert_eq!(result, 2858);
     }
 }
