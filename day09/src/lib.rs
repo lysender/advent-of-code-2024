@@ -9,35 +9,37 @@ pub fn part2(input: &str) -> i32 {
 fn solve_puzzle(data: &str) -> i32 {
     let blocks = parse_data(data);
     print_blocks(&blocks);
-    let entries = format_blocks(&blocks);
+    let mut entries = format_blocks(&blocks);
+    print_disk_entries(&entries);
+    defrag_entries(&mut entries);
     print_disk_entries(&entries);
     0
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Block {
     File(FileBlock),
     Space(SpaceBlock),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct FileBlock {
     id: i32,
     blocks: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SpaceBlock {
     blocks: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum DiskEntry {
     File(FileEntry),
     Space,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct FileEntry {
     id: i32,
 }
@@ -102,10 +104,10 @@ fn format_blocks(blocks: &Vec<Block>) -> Vec<DiskEntry> {
 }
 
 fn print_disk_entries(entries: &Vec<DiskEntry>) {
-    println!("** BEGIN Disk Entries **");
+    println!("== BEGIN Disk Entries ==");
     let str = format_disk_entries_str(entries);
     println!("{}", str);
-    println!("** END Disk Entries **");
+    println!("== END Disk Entries ==");
 }
 
 fn format_disk_entries_str(entries: &Vec<DiskEntry>) -> String {
@@ -117,6 +119,69 @@ fn format_disk_entries_str(entries: &Vec<DiskEntry>) -> String {
         });
     }
     parts.join("").to_string()
+}
+
+fn defrag_entries(entries: &mut Vec<DiskEntry>) {
+    // Move the rightmost file block to the left most space block
+    // One at a time
+    // Until no more gaps left to be filled
+    let mut l: usize = 0;
+    let mut r: usize = entries.len() - 1;
+
+    while l < r {
+        let file = scan_file(entries, r, l);
+        let space = scan_space(entries, l, r);
+
+        match (space, file) {
+            (Some(s), Some(f)) => {
+                // Swap places
+                let tmp = entries[f];
+                entries[f] = entries[s];
+                entries[s] = tmp;
+
+                // Move the indexes
+                l = s + 1;
+                r = f - 1;
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+}
+
+fn scan_file(entries: &Vec<DiskEntry>, start: usize, left: usize) -> Option<usize> {
+    // Decrement start until left to find a file block starting from the right
+    let mut i: usize = start;
+    while left < i {
+        let item = &entries[i];
+        match item {
+            DiskEntry::File(_) => {
+                return Some(i);
+            }
+            _ => {
+                i -= 1;
+            }
+        };
+    }
+    None
+}
+
+fn scan_space(entries: &Vec<DiskEntry>, start: usize, right: usize) -> Option<usize> {
+    // Increment start until right to find a space block starting from the left
+    let mut i: usize = start;
+    while i < right {
+        let item = &entries[i];
+        match item {
+            DiskEntry::Space => {
+                return Some(i);
+            }
+            _ => {
+                i += 1;
+            }
+        };
+    }
+    None
 }
 
 #[cfg(test)]
@@ -132,11 +197,18 @@ mod tests {
         let blocks_str = format_blocks_str(&blocks);
         assert_eq!(blocks_str, "2333133121414131402".to_string(),);
 
-        let entries = format_blocks(&blocks);
+        let mut entries = format_blocks(&blocks);
         let entries_str = format_disk_entries_str(&entries);
         assert_eq!(
             entries_str,
             "00...111...2...333.44.5555.6666.777.888899".to_string()
+        );
+
+        defrag_entries(&mut entries);
+        let entries_str = format_disk_entries_str(&entries);
+        assert_eq!(
+            entries_str,
+            "0099811188827773336446555566..............".to_string()
         );
     }
 
