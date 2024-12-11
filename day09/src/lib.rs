@@ -91,28 +91,6 @@ fn parse_data(data: &str) -> Vec<Block> {
     blocks
 }
 
-fn print_blocks(blocks: &Vec<Block>) {
-    println!("== BEGIN Blocks ==");
-    let str = format_blocks_str(blocks);
-    println!("{}", str);
-    println!("== END Blocks ==");
-}
-
-fn format_blocks_str(blocks: &Vec<Block>) -> String {
-    let mut parts: Vec<String> = Vec::new();
-    for block in blocks.iter() {
-        parts.push(match block {
-            Block::File(f) => {
-                format!("{}", f.blocks)
-            }
-            Block::Space(s) => {
-                format!("{}", s.blocks)
-            }
-        });
-    }
-    parts.join("").to_string()
-}
-
 fn format_blocks(blocks: &Vec<Block>) -> Vec<DiskEntry> {
     let mut entries: Vec<DiskEntry> = Vec::new();
     for block in blocks.iter() {
@@ -130,24 +108,6 @@ fn format_blocks(blocks: &Vec<Block>) -> Vec<DiskEntry> {
         }
     }
     entries
-}
-
-fn print_disk_entries(entries: &Vec<DiskEntry>) {
-    println!("== BEGIN Disk Entries ==");
-    let str = format_disk_entries_str(entries);
-    println!("{}", str);
-    println!("== END Disk Entries ==");
-}
-
-fn format_disk_entries_str(entries: &Vec<DiskEntry>) -> String {
-    let mut parts: Vec<String> = Vec::new();
-    for entry in entries.iter() {
-        parts.push(match entry {
-            DiskEntry::File(f) => f.id.to_string(),
-            DiskEntry::Space => ".".to_string(),
-        });
-    }
-    parts.join("").to_string()
 }
 
 fn defrag_entries(entries: &mut Vec<DiskEntry>) {
@@ -180,14 +140,21 @@ fn defrag_entries(entries: &mut Vec<DiskEntry>) {
 fn defrag_entries_contiguous(entries: &mut Vec<DiskEntry>) {
     let indexes = index_file_entries(&entries);
 
-    let space_start: usize = 0;
+    let mut space_start: usize = 0;
     for file in indexes.iter().rev() {
         // Find a space block that fits this file block
-        let s_index = find_free_space(entries, space_start, file.index + file.length, file.length);
+        let s_index = find_free_space(entries, space_start, file.index, file.length);
         if let Some(s_index) = s_index {
             // Swap values
             for i in 0..file.length {
                 swap_entries(entries, s_index + i, file.index + i);
+            }
+        }
+
+        let space_one = find_one_space(entries, space_start, file.index);
+        if let Some(s_1) = space_one {
+            if space_start < s_1 {
+                space_start = s_1;
             }
         }
     }
@@ -197,6 +164,19 @@ fn swap_entries(entries: &mut Vec<DiskEntry>, a: usize, b: usize) {
     let tmp = entries[b];
     entries[b] = entries[a];
     entries[a] = tmp;
+}
+
+fn find_one_space(entries: &Vec<DiskEntry>, start: usize, end: usize) -> Option<usize> {
+    for i in start..=end {
+        let item = entries[i];
+        match item {
+            DiskEntry::Space => {
+                return Some(i);
+            }
+            DiskEntry::File(_) => (),
+        }
+    }
+    None
 }
 
 fn find_free_space(
@@ -333,6 +313,32 @@ mod tests {
     use input::get_puzzle_input;
 
     use super::*;
+
+    fn format_blocks_str(blocks: &Vec<Block>) -> String {
+        let mut parts: Vec<String> = Vec::new();
+        for block in blocks.iter() {
+            parts.push(match block {
+                Block::File(f) => {
+                    format!("{}", f.blocks)
+                }
+                Block::Space(s) => {
+                    format!("{}", s.blocks)
+                }
+            });
+        }
+        parts.join("").to_string()
+    }
+
+    fn format_disk_entries_str(entries: &Vec<DiskEntry>) -> String {
+        let mut parts: Vec<String> = Vec::new();
+        for entry in entries.iter() {
+            parts.push(match entry {
+                DiskEntry::File(f) => f.id.to_string(),
+                DiskEntry::Space => ".".to_string(),
+            });
+        }
+        parts.join("").to_string()
+    }
 
     #[test]
     fn test_blocks_str() {
