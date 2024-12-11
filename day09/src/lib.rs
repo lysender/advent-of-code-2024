@@ -24,7 +24,8 @@ fn solve_puzzle(data: &str) -> i64 {
 
 fn solve_puzzle_contiguous(data: &str) -> i64 {
     let blocks = parse_data(data);
-    let entries = defrag_entries_contiguous(format_blocks(&blocks));
+    let mut entries = format_blocks(&blocks);
+    defrag_entries_contiguous(&mut entries);
 
     let total: i64 = entries
         .iter()
@@ -66,12 +67,10 @@ struct FileEntry {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct DiskEntryIndex {
-    orig_index: usize,
+struct FileEntryIndex {
     index: usize,
     length: usize,
-    item: DiskEntry,
-    moved: bool,
+    id: i32,
 }
 
 fn parse_data(data: &str) -> Vec<Block> {
@@ -165,9 +164,7 @@ fn defrag_entries(entries: &mut Vec<DiskEntry>) {
         match (space, file) {
             (Some(s), Some(f)) => {
                 // Swap places
-                let tmp = entries[f];
-                entries[f] = entries[s];
-                entries[s] = tmp;
+                swap_entries(entries, s, f);
 
                 // Move the indexes
                 l = s + 1;
@@ -180,102 +177,70 @@ fn defrag_entries(entries: &mut Vec<DiskEntry>) {
     }
 }
 
-fn defrag_entries_contiguous(entries: Vec<DiskEntry>) -> Vec<DiskEntry> {
-    let mut indexes = index_disk_entries(&entries);
+fn defrag_entries_contiguous(entries: &mut Vec<DiskEntry>) {
+    let indexes = index_file_entries(&entries);
 
-    for i in indexes.iter() {
-        println!("{:?}", i);
-    }
-
-    // Find file blocks one at a time starting from the end
-    let mut i = indexes.len() - 1;
-    while i > 0 {
-        let curr_index = &indexes[i];
-        if curr_index.moved {
-            i -= 1;
-            continue;
+    let space_start: usize = 0;
+    for file in indexes.iter().rev() {
+        // Find a space block that fits this file block
+        let s_index = find_free_space(entries, space_start, file.index + file.length, file.length);
+        if let Some(s_index) = s_index {
+            // Swap values
+            for i in 0..file.length {
+                swap_entries(entries, s_index + i, file.index + i);
+            }
         }
+    }
+}
 
-        match curr_index.item {
-            DiskEntry::File(_) => {
-                // Find a block of spaces that may fit
-                if let Some(sk) = find_free_space(&indexes, curr_index.length) {
-                    let s_index = &indexes[sk];
+fn swap_entries(entries: &mut Vec<DiskEntry>, a: usize, b: usize) {
+    let tmp = entries[b];
+    entries[b] = entries[a];
+    entries[a] = tmp;
+}
 
-                    if s_index.orig_index < curr_index.orig_index {
-                        println!("curr: {:?}, space: {:?}", curr_index, s_index);
+fn find_free_space(
+    entries: &Vec<DiskEntry>,
+    start: usize,
+    end: usize,
+    length: usize,
+) -> Option<usize> {
+    let mut s_index: Option<usize> = None;
+    let mut s_length: usize = 0;
 
-                        if s_index.length == curr_index.length {
-                            // We can simply swap the values
-                            let tmp = indexes[i];
-                            indexes[i] = indexes[sk];
-                            indexes[sk] = tmp;
-                        } else {
-                            // Break the space down to two parts, first part with length equal to the
-                            // file and another part with the remaining spaces
-                            let diff = curr_index.length.abs_diff(s_index.length);
-                            let new_space = DiskEntryIndex {
-                                orig_index: s_index.orig_index,
-                                index: sk + 1,
-                                length: diff,
-                                item: DiskEntry::Space,
-                                moved: false,
-                            };
+    for i in start..=end {
+        let item = entries[i];
+        match item {
+            DiskEntry::Space => {
+                if s_index.is_some() {
+                    // Continue the count
+                    s_length += 1;
 
-                            // Swap places
-                            let tmp = DiskEntryIndex {
-                                orig_index: curr_index.orig_index,
-                                index: s_index.index,
-                                length: curr_index.length,
-                                item: curr_index.item,
-                                moved: true,
-                            };
-                            indexes[i] = DiskEntryIndex {
-                                orig_index: s_index.orig_index,
-                                index: curr_index.index,
-                                length: curr_index.length,
-                                item: s_index.item,
-                                moved: true,
-                            };
-                            indexes[sk] = tmp;
+                    if s_length >= length {
+                        // We got a free space to fit in
+                        return Some(s_index.unwrap());
+                    }
+                } else {
+                    // Start a new count
+                    s_index = Some(i);
+                    s_length = 1;
 
-                            // Insert the new index after the space index filled with file
-                            indexes.insert(sk + 1, new_space);
-
-                            // We need to jump back up since we added a new entry
-                            i += 1;
-                        }
+                    if s_length >= length {
+                        // We got a free space to fit in
+                        return Some(i);
                     }
                 }
             }
-            DiskEntry::Space => (),
-        }
-
-        i -= 1;
-    }
-
-    // Rebuild the disk entries using the updated index
-    let mut updated_entries: Vec<DiskEntry> = Vec::with_capacity(entries.len());
-    for index in indexes.iter() {
-        for _ in 0..index.length {
-            updated_entries.push(index.item.clone());
-        }
-    }
-
-    updated_entries
-}
-
-fn find_free_space(indexes: &Vec<DiskEntryIndex>, length: usize) -> Option<usize> {
-    for (k, v) in indexes.iter().enumerate() {
-        match v.item {
-            DiskEntry::Space => {
-                if v.length >= length {
-                    return Some(k);
+            DiskEntry::File(_) => {
+                if s_index.is_some() {
+                    // Reset
+                    s_index = None;
+                    s_length = 0;
                 }
             }
-            DiskEntry::File(_) => (),
         }
     }
+
     None
 }
 
@@ -313,80 +278,44 @@ fn scan_space(entries: &Vec<DiskEntry>, start: usize, right: usize) -> Option<us
     None
 }
 
-fn index_disk_entries(entries: &Vec<DiskEntry>) -> Vec<DiskEntryIndex> {
+fn index_file_entries(entries: &Vec<DiskEntry>) -> Vec<FileEntryIndex> {
     // Index all files and space blocks so that we can locate them easily via a loop
-    let mut indexes: Vec<DiskEntryIndex> = Vec::new();
-    let mut prev: Option<DiskEntryIndex> = None;
+    let mut indexes: Vec<FileEntryIndex> = Vec::new();
+    let mut prev: Option<FileEntryIndex> = None;
     for (k, v) in entries.iter().enumerate() {
         match v {
             DiskEntry::File(f) => {
                 if let Some(prev_index) = prev.as_mut() {
-                    match prev_index.item {
-                        DiskEntry::Space => {
-                            // Suddenly encountered a space
-                            // Complete the previous index and start a new space index
-                            indexes.push(*prev_index);
-                            prev = Some(DiskEntryIndex {
-                                orig_index: k,
-                                index: k,
-                                length: 1,
-                                item: *v,
-                                moved: false,
-                            });
-                        }
-                        DiskEntry::File(index_f) => {
-                            if index_f.id == f.id {
-                                // Same as previous, just increment the length
-                                prev_index.length += 1;
-                                prev = Some(*prev_index);
-                            } else {
-                                // Encountered a new file block
-                                // Complete the previous index and start a new index
-                                indexes.push(*prev_index);
-                                prev = Some(DiskEntryIndex {
-                                    orig_index: k,
-                                    index: k,
-                                    length: 1,
-                                    item: *v,
-                                    moved: false,
-                                })
-                            }
-                        }
+                    if prev_index.id == f.id {
+                        // Same as previous, just increment the length
+                        prev_index.length += 1;
+                        prev = Some(*prev_index);
+                    } else {
+                        // Encountered a new file block
+                        // Complete the previous index and start a new index
+                        indexes.push(*prev_index);
+                        prev = Some(FileEntryIndex {
+                            index: k,
+                            length: 1,
+                            id: f.id,
+                        });
                     }
                 } else {
                     // Start of the entries, start a new index
-                    prev = Some(DiskEntryIndex {
-                        orig_index: k,
+                    prev = Some(FileEntryIndex {
                         index: k,
                         length: 1,
-                        item: *v,
-                        moved: false,
+                        id: f.id,
                     });
                 }
             }
             DiskEntry::Space => {
                 if let Some(prev_index) = prev.as_mut() {
-                    match prev_index.item {
-                        DiskEntry::Space => {
-                            // Same as previous, just increment the length
-                            prev_index.length += 1;
-                            prev = Some(*prev_index);
-                        }
-                        DiskEntry::File(_) => {
-                            // Suddenly encountered a space, mark the previous
-                            // file as complete and record a new prev as a space
-                            indexes.push(*prev_index);
-                            prev = Some(DiskEntryIndex {
-                                orig_index: k,
-                                index: k,
-                                length: 1,
-                                item: *v,
-                                moved: false,
-                            })
-                        }
-                    }
-                } else {
-                    panic!("Entries cannot start with a space.");
+                    // Suddenly encountered a space, mark the previous
+                    // file as complete and record a new prev as a space
+                    indexes.push(*prev_index);
+                    // Start over to collect new file blocks
+                    prev = None;
                 }
             }
         }
@@ -435,7 +364,7 @@ mod tests {
         let blocks_str = format_blocks_str(&blocks);
         assert_eq!(blocks_str, "2333133121414131402".to_string(),);
 
-        let entries = format_blocks(&blocks);
+        let mut entries = format_blocks(&blocks);
 
         let entries_str = format_disk_entries_str(&entries);
         assert_eq!(
@@ -443,10 +372,8 @@ mod tests {
             "00...111...2...333.44.5555.6666.777.888899".to_string()
         );
 
-        let entries = defrag_entries_contiguous(entries);
+        defrag_entries_contiguous(&mut entries);
 
-        println!("Input disk entries: ");
-        println!("{}", entries_str);
         let entries_str = format_disk_entries_str(&entries);
         assert_eq!(
             entries_str,
