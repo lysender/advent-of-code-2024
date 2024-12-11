@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use glam::IVec2;
+use input::is_coord_greater;
 
 pub fn part1(input: &str) -> i32 {
     solve_puzzle(input)
@@ -245,17 +246,6 @@ fn parse_data(data: &str) -> Coverage {
     Coverage::new(matrix)
 }
 
-fn is_coord_greater(v1: &IVec2, v2: &IVec2) -> bool {
-    if v1.x > v2.x {
-        // X-axis is high priority
-        return true;
-    }
-    if v1.x == v2.x {
-        return v1.y > v2.y;
-    }
-    false
-}
-
 fn get_next_coord(a: &IVec2, b: &IVec2) -> IVec2 {
     // Find the next coord from the pair coord moving forward
     let diff_x = b.x - a.x;
@@ -272,7 +262,7 @@ fn get_prev_coord(a: &IVec2, b: &IVec2) -> IVec2 {
 
 #[cfg(test)]
 mod tests {
-    use input::get_puzzle_input;
+    use input::{get_puzzle_input, is_coord_greater};
 
     use super::*;
 

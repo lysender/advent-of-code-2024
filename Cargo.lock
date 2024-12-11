@@ -180,6 +180,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "day10"
+version = "0.1.0"
+dependencies = [
+ "divan",
+ "glam",
+ "input",
+ "itertools",
+ "nom",
+ "nom-supreme",
+]
+
+[[package]]
 name = "divan"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -235,6 +247,9 @@ checksum = "0cfe9645a18782869361d9c8732246be7b410ad4e919d3609ebabdac00ba12c3"
 [[package]]
 name = "input"
 version = "0.1.0"
+dependencies = [
+ "glam",
+]
 
 [[package]]
 name = "itertools"

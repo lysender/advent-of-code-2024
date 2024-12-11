@@ -1,3 +1,4 @@
+use glam::IVec2;
 use std::path::Path;
 use std::time::Duration;
 use std::{fs, path::PathBuf};
@@ -19,6 +20,17 @@ pub fn format_duration(duration: Duration) -> String {
     }
     let seconds = duration.as_secs();
     format!("{}s", seconds)
+}
+
+pub fn is_coord_greater(v1: &IVec2, v2: &IVec2) -> bool {
+    if v1.x > v2.x {
+        // X-axis hass high priority
+        return true;
+    }
+    if v1.x == v2.x {
+        return v1.y > v2.y;
+    }
+    false
 }
 
 #[cfg(test)]

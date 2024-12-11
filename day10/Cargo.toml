@@ -1,0 +1,19 @@
+[package]
+name = "day10"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+input = { path = "../input" }
+glam.workspace = true
+itertools.workspace = true
+nom.workspace = true
+nom-supreme.workspace = true
+
+[dev-dependencies]
+divan.workspace = true
+
+[[bench]]
+name = "day10-bench"
+path = "benches/benchmarks.rs"
+harness = false
