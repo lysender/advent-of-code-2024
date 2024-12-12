@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn test_part1() {
         let input = get_puzzle_input("11-sample");
-        let result = solve_puzzle(input.as_str(), 6);
+        let result = solve_puzzle_cached(input.as_str(), 6);
         assert_eq!(result, 22);
     }
 
