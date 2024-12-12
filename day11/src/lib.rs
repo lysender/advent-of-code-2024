@@ -1,4 +1,3 @@
-use rayon::prelude::*;
 use std::collections::HashMap;
 
 use nom::{

@@ -8,7 +8,6 @@ input = { path = "../input" }
 itertools.workspace = true
 nom.workspace = true
 nom-supreme.workspace = true
-rayon.workspace = true
 
 [dev-dependencies]
 divan.workspace = true
