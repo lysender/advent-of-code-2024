@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::collections::HashMap;
 
 use nom::{
@@ -5,6 +6,8 @@ use nom::{
     multi::separated_list1,
     IResult, Parser,
 };
+
+const BATCH: usize = 10;
 
 pub fn part1(input: &str) -> i32 {
     solve_puzzle_cached(input, 25)
@@ -19,8 +22,8 @@ fn solve_puzzle_cached(data: &str, blinks: usize) -> i32 {
     // Cache of stones blinked 5 times
     let mut cache: HashMap<u64, Vec<u64>> = HashMap::new();
 
-    let remainder = blinks % 5;
-    let batched_blinks = (blinks / 5) * 5;
+    let remainder = blinks % BATCH;
+    let batched_blinks = (blinks / BATCH) * BATCH;
 
     let mut initial_stones: Vec<u64> = Vec::new();
     if remainder > 0 {
@@ -39,9 +42,13 @@ fn solve_puzzle_cached(data: &str, blinks: usize) -> i32 {
 
     // Now, we will use caching
     let mut total: usize = 0;
-    for num in initial_stones.iter() {
-        println!("processing stone: {}", num);
-        total += wink_stone(*num, batched_blinks, &mut cache);
+    if batched_blinks > 0 {
+        for num in initial_stones.iter() {
+            println!("processing stone: {}", num);
+            total += wink_stone(*num, batched_blinks, &mut cache);
+        }
+    } else {
+        total = initial_stones.len();
     }
     total as i32
 }
@@ -70,12 +77,15 @@ fn blink_stone(num: u64, blinks: usize) -> Vec<u64> {
 }
 
 fn wink_stone(num: u64, blinks: usize, cache: &mut HashMap<u64, Vec<u64>>) -> usize {
-    assert!(blinks % 5 == 0, "Wink should have blinks divisible by 5");
-    if blinks == 5 {
+    assert!(
+        blinks % BATCH == 0,
+        "Wink should have blinks divisible by BATCH"
+    );
+    if blinks == BATCH {
         return if let Some(entry) = cache.get(&num) {
             entry.len()
         } else {
-            let stones = blink_stone(num, 5);
+            let stones = blink_stone(num, BATCH);
             let result = stones.len();
             cache.insert(num, stones);
             result
@@ -84,10 +94,10 @@ fn wink_stone(num: u64, blinks: usize, cache: &mut HashMap<u64, Vec<u64>>) -> us
 
     let mut total: usize = 0;
     // Blink the stone 5 times
-    let stones = blink_stone(num, 5);
-    // Wink each stone minus 5
+    let stones = blink_stone(num, BATCH);
+    // Wink each stone minus BATCH
     for v in stones.iter() {
-        total += wink_stone(*v, blinks - 5, cache);
+        total += wink_stone(*v, blinks - BATCH, cache);
     }
     total
 }
