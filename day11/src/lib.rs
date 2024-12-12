@@ -6,8 +6,6 @@ use nom::{
     IResult, Parser,
 };
 
-const BATCH: usize = 10;
-
 pub fn part1(input: &str) -> i32 {
     solve_puzzle_cached(input, 25)
 }
@@ -17,37 +15,13 @@ pub fn part2(input: &str) -> i32 {
 }
 
 fn solve_puzzle_cached(data: &str, blinks: usize) -> i32 {
-    let orig_stones = parse_data(data);
-    // Cache of stones blinked 5 times
-    let mut cache: HashMap<i64, Vec<i64>> = HashMap::new();
-
-    let remainder = blinks % BATCH;
-    let batched_blinks = (blinks / BATCH) * BATCH;
-
-    let mut initial_stones: Vec<i64> = Vec::new();
-    if remainder > 0 {
-        // Generate initial stone list by blinking a few times without caching
-        for num in orig_stones.iter() {
-            initial_stones.extend_from_slice(&blink_stone(*num, remainder));
-        }
-    } else {
-        initial_stones = orig_stones;
-    }
-
-    println!("initial stones: {:?}", initial_stones);
-    println!("blinks: {}", blinks);
-    println!("remainder blinks: {}", remainder);
-    println!("batched blinks: {}", batched_blinks);
+    let stones = parse_data(data);
+    let mut cache: HashMap<(i64, usize), i64> = HashMap::new();
 
     // Now, we will use caching
     let mut total: usize = 0;
-    if batched_blinks > 0 {
-        for num in initial_stones.iter() {
-            println!("processing stone: {}", num);
-            total += wink_stone(*num, batched_blinks, &mut cache);
-        }
-    } else {
-        total = initial_stones.len();
+    for num in stones.iter() {
+        total += wink_stone(*num, blinks, &mut cache);
     }
     total as i32
 }
@@ -75,29 +49,22 @@ fn blink_stone(num: i64, blinks: usize) -> Vec<i64> {
     digits
 }
 
-fn wink_stone(num: i64, blinks: usize, cache: &mut HashMap<i64, Vec<i64>>) -> usize {
-    assert!(
-        blinks % BATCH == 0,
-        "Wink should have blinks divisible by BATCH"
-    );
-    if blinks == BATCH {
-        return if let Some(entry) = cache.get(&num) {
-            entry.len()
-        } else {
-            let stones = blink_stone(num, BATCH);
-            let result = stones.len();
-            cache.insert(num, stones);
-            result
-        };
+fn wink_stone(num: i64, blinks: usize, cache: &mut HashMap<(i64, usize), i64>) -> usize {
+    if blinks == 0 {
+        return 1;
+    }
+
+    if let Some(entry) = cache.get(&(num, blinks)) {
+        return *entry as usize;
     }
 
     let mut total: usize = 0;
-    // Blink the stone 5 times
-    let stones = blink_stone(num, BATCH);
-    // Wink each stone minus BATCH
+    let stones = blink_stone(num, 1);
     for v in stones.iter() {
-        total += wink_stone(*v, blinks - BATCH, cache);
+        total += wink_stone(*v, blinks - 1, cache);
     }
+
+    cache.insert((num, blinks), total as i64);
     total
 }
 
