@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use nom::{
     character::complete::{self, space1},
     multi::separated_list1,
@@ -5,62 +7,43 @@ use nom::{
 };
 
 pub fn part1(input: &str) -> i32 {
-    solve_puzzle(input, 25)
+    solve_puzzle_cached(input, 25)
 }
 
 pub fn part2(input: &str) -> i32 {
-    // solve_puzzle(input, 75)
-    // solve_puzzle(input, 5)
-    //for i in 0..5 {
-    // let num = 10;
-    // println!("Num: {}", num);
-    // let counts = count_stones(num, 8);
-    // println!("Num: {}, blinks: {}, stones: {}", num, 8, counts);
-    //}
-    0
-}
-
-fn solve_puzzle(data: &str, blinks: usize) -> i32 {
-    let result = parse_data(data);
-    let mut stones: i32 = 0;
-    for num in result.iter() {
-        stones += blink_stone(*num, blinks).len() as i32;
-    }
-    stones
+    solve_puzzle_cached(input, 75)
 }
 
 fn solve_puzzle_cached(data: &str, blinks: usize) -> i32 {
-    let result = parse_data(data);
-    let mut stones: i32 = 0;
-    for num in result.iter() {
-        stones += count_stones(*num, blinks);
-        break;
-    }
-    stones
-}
+    let orig_stones = parse_data(data);
+    // Cache of stones blinked 5 times
+    let mut cache: HashMap<u64, Vec<u64>> = HashMap::new();
 
-fn count_stones(num: u64, blinks: usize) -> i32 {
-    let mut digits: Vec<u64> = vec![num];
-    for i in 0..blinks {
-        let mut current: Vec<u64> = Vec::new();
-        for num in digits.iter() {
-            if *num == 0 {
-                current.push(1);
-            } else {
-                let digits = get_num_digits(*num);
-                if digits.len() % 2 == 0 {
-                    let (left, right) = split_digits(digits);
-                    current.push(left);
-                    current.push(right);
-                } else {
-                    current.push(*num * 2024);
-                }
-            }
+    let remainder = blinks % 5;
+    let batched_blinks = (blinks / 5) * 5;
+
+    let mut initial_stones: Vec<u64> = Vec::new();
+    if remainder > 0 {
+        // Generate initial stone list by blinking a few times without caching
+        for num in orig_stones.iter() {
+            initial_stones.extend_from_slice(&blink_stone(*num, remainder));
         }
-        println!("{:?}", current);
-        digits = current;
+    } else {
+        initial_stones = orig_stones;
     }
-    digits.len() as i32
+
+    println!("initial stones: {:?}", initial_stones);
+    println!("blinks: {}", blinks);
+    println!("remainder blinks: {}", remainder);
+    println!("batched blinks: {}", batched_blinks);
+
+    // Now, we will use caching
+    let mut total: usize = 0;
+    for num in initial_stones.iter() {
+        println!("processing stone: {}", num);
+        total += wink_stone(*num, batched_blinks, &mut cache);
+    }
+    total as i32
 }
 
 fn blink_stone(num: u64, blinks: usize) -> Vec<u64> {
@@ -81,10 +64,32 @@ fn blink_stone(num: u64, blinks: usize) -> Vec<u64> {
                 }
             }
         }
-        println!("{:?}", current);
         digits = current;
     }
     digits
+}
+
+fn wink_stone(num: u64, blinks: usize, cache: &mut HashMap<u64, Vec<u64>>) -> usize {
+    assert!(blinks % 5 == 0, "Wink should have blinks divisible by 5");
+    if blinks == 5 {
+        return if let Some(entry) = cache.get(&num) {
+            entry.len()
+        } else {
+            let stones = blink_stone(num, 5);
+            let result = stones.len();
+            cache.insert(num, stones);
+            result
+        };
+    }
+
+    let mut total: usize = 0;
+    // Blink the stone 5 times
+    let stones = blink_stone(num, 5);
+    // Wink each stone minus 5
+    for v in stones.iter() {
+        total += wink_stone(*v, blinks - 5, cache);
+    }
+    total
 }
 
 fn parse_data(data: &str) -> Vec<u64> {
@@ -168,7 +173,7 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = get_puzzle_input("11-sample");
-        let result = solve_puzzle(input.as_str(), 25);
+        let result = solve_puzzle_cached(input.as_str(), 25);
         assert_eq!(result, 55312);
     }
 }
