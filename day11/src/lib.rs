@@ -16,7 +16,7 @@ pub fn part2(input: &str) -> i32 {
 
 fn solve_puzzle_cached(data: &str, blinks: usize) -> i32 {
     let stones = parse_data(data);
-    let mut cache: HashMap<(i64, usize), i64> = HashMap::new();
+    let mut cache: HashMap<(u64, usize), u64> = HashMap::new();
 
     // Now, we will use caching
     let mut total: usize = 0;
@@ -26,10 +26,10 @@ fn solve_puzzle_cached(data: &str, blinks: usize) -> i32 {
     total as i32
 }
 
-fn blink_stone(num: i64, blinks: usize) -> Vec<i64> {
-    let mut digits: Vec<i64> = vec![num];
+fn blink_stone(num: u64, blinks: usize) -> Vec<u64> {
+    let mut digits: Vec<u64> = vec![num];
     for _ in 0..blinks {
-        let mut current: Vec<i64> = Vec::new();
+        let mut current: Vec<u64> = Vec::new();
         for num in digits.iter() {
             if *num == 0 {
                 current.push(1);
@@ -49,7 +49,7 @@ fn blink_stone(num: i64, blinks: usize) -> Vec<i64> {
     digits
 }
 
-fn wink_stone(num: i64, blinks: usize, cache: &mut HashMap<(i64, usize), i64>) -> usize {
+fn wink_stone(num: u64, blinks: usize, cache: &mut HashMap<(u64, usize), u64>) -> usize {
     if blinks == 0 {
         return 1;
     }
@@ -64,27 +64,27 @@ fn wink_stone(num: i64, blinks: usize, cache: &mut HashMap<(i64, usize), i64>) -
         total += wink_stone(*v, blinks - 1, cache);
     }
 
-    cache.insert((num, blinks), total as i64);
+    cache.insert((num, blinks), total as u64);
     total
 }
 
-fn parse_data(data: &str) -> Vec<i64> {
+fn parse_data(data: &str) -> Vec<u64> {
     if let Ok((_, items)) = parse_line(data) {
         return items;
     }
     vec![]
 }
 
-fn parse_line(data: &str) -> IResult<&str, Vec<i64>> {
-    separated_list1(space1, complete::i64).parse(data)
+fn parse_line(data: &str) -> IResult<&str, Vec<u64>> {
+    separated_list1(space1, complete::u64).parse(data)
 }
 
-fn get_num_digits(num: i64) -> Vec<i64> {
+fn get_num_digits(num: u64) -> Vec<u64> {
     if num == 0 {
         return vec![0];
     }
 
-    let mut digits: Vec<i64> = Vec::new();
+    let mut digits: Vec<u64> = Vec::new();
     let mut n = num;
     while n > 0 {
         digits.push(n % 10);
@@ -94,20 +94,20 @@ fn get_num_digits(num: i64) -> Vec<i64> {
     digits
 }
 
-fn merge_digits(digits: &[i64]) -> i64 {
-    let result: i64 = digits
+fn merge_digits(digits: &[u64]) -> u64 {
+    let result: u64 = digits
         .iter()
         .enumerate()
         .rev()
         .map(|(k, v)| {
-            let d = 10_i64.pow((digits.len() - k - 1) as u32);
+            let d = 10_u64.pow((digits.len() - k - 1) as u32);
             d * v
         })
         .sum();
     result
 }
 
-fn split_digits(digits: Vec<i64>) -> (i64, i64) {
+fn split_digits(digits: Vec<u64>) -> (u64, u64) {
     assert!(digits.len() % 2 == 0, "Number of digits must be even");
     let (left, right) = digits.split_at(digits.len() / 2);
     (merge_digits(left), merge_digits(right))
