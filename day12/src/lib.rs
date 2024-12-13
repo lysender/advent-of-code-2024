@@ -15,20 +15,18 @@ fn solve_puzzle(data: &str) -> i32 {
     let grid = parse_data(data);
 
     // Collect all regions
-    let mut regions: Vec<Region> = Vec::new();
     let mut surveyed = create_visited_grid(grid.rows as usize, grid.cols as usize);
+    let mut perimeter: i32 = 0;
 
     for x in 0..grid.rows {
         for y in 0..grid.cols {
             let pos = IVec2::new(x as i32, y as i32);
             if let Some(region) = survey_area(&grid, &pos, &mut surveyed) {
-                regions.push(region);
+                perimeter += region.compute_perimeter();
             }
         }
     }
 
-    // Calculate all perimeters for each region
-    let perimeter: i32 = regions.iter().map(|r| r.compute_perimeter()).sum();
     perimeter
 }
 
