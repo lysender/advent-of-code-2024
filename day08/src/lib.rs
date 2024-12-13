@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use glam::IVec2;
-use input::is_coord_greater;
+use grid::coord_greater;
 
 pub fn part1(input: &str) -> i32 {
     solve_puzzle(input)
@@ -80,7 +80,7 @@ impl Coverage {
                 if let Some(c) = self.find_item(px, py) {
                     if c == &tower.value {
                         let fpos = IVec2::new(px, py);
-                        if is_coord_greater(&fpos, &tower.pos) {
+                        if coord_greater(&fpos, &tower.pos) {
                             pairs.insert((tower.pos.clone(), fpos));
                         } else {
                             pairs.insert((fpos, tower.pos.clone()));
@@ -97,7 +97,7 @@ impl Coverage {
                 if let Some(c) = self.find_item(px, py) {
                     if c == &tower.value {
                         let bpos = IVec2::new(px, py);
-                        if is_coord_greater(&bpos, &tower.pos) {
+                        if coord_greater(&bpos, &tower.pos) {
                             pairs.insert((tower.pos.clone(), bpos));
                         } else {
                             pairs.insert((bpos, tower.pos.clone()));
@@ -128,7 +128,7 @@ impl Coverage {
                 if let Some(c) = self.find_item(px, py) {
                     if c == &tower.value {
                         let fpos = IVec2::new(px, py);
-                        if is_coord_greater(&fpos, &tower.pos) {
+                        if coord_greater(&fpos, &tower.pos) {
                             pairs.insert((tower.pos.clone(), fpos));
                         } else {
                             pairs.insert((fpos, tower.pos.clone()));
@@ -145,7 +145,7 @@ impl Coverage {
                 if let Some(c) = self.find_item(px, py) {
                     if c == &tower.value {
                         let bpos = IVec2::new(px, py);
-                        if is_coord_greater(&bpos, &tower.pos) {
+                        if coord_greater(&bpos, &tower.pos) {
                             pairs.insert((tower.pos.clone(), bpos));
                         } else {
                             pairs.insert((bpos, tower.pos.clone()));
@@ -262,18 +262,9 @@ fn get_prev_coord(a: &IVec2, b: &IVec2) -> IVec2 {
 
 #[cfg(test)]
 mod tests {
-    use input::{get_puzzle_input, is_coord_greater};
+    use input::get_puzzle_input;
 
     use super::*;
-
-    #[test]
-    fn test_is_greater_ivec2() {
-        assert!(is_coord_greater(&IVec2::new(5, 5), &IVec2::new(5, 4)));
-        assert!(is_coord_greater(&IVec2::new(5, 5), &IVec2::new(4, 5)));
-        assert!(is_coord_greater(&IVec2::new(5, 5), &IVec2::new(4, 4)));
-        assert!(is_coord_greater(&IVec2::new(5, 5), &IVec2::new(5, 0)));
-        assert!(!is_coord_greater(&IVec2::new(5, 5), &IVec2::new(6, 6)));
-    }
 
     #[test]
     fn test_get_next_coord() {
