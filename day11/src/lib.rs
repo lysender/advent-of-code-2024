@@ -6,15 +6,15 @@ use nom::{
     IResult, Parser,
 };
 
-pub fn part1(input: &str) -> i32 {
+pub fn part1(input: &str) -> usize {
     solve_puzzle_cached(input, 25)
 }
 
-pub fn part2(input: &str) -> i32 {
+pub fn part2(input: &str) -> usize {
     solve_puzzle_cached(input, 75)
 }
 
-fn solve_puzzle_cached(data: &str, blinks: usize) -> i32 {
+fn solve_puzzle_cached(data: &str, blinks: usize) -> usize {
     let stones = parse_data(data);
     let mut cache: HashMap<(u64, usize), u64> = HashMap::new();
 
@@ -23,7 +23,7 @@ fn solve_puzzle_cached(data: &str, blinks: usize) -> i32 {
     for num in stones.iter() {
         total += wink_stone(*num, blinks, &mut cache);
     }
-    total as i32
+    total
 }
 
 fn blink_stone(num: u64, blinks: usize) -> Vec<u64> {
