@@ -22,7 +22,7 @@ fn solve_puzzle(data: &str) -> i32 {
         for y in 0..grid.cols {
             let pos = IVec2::new(x as i32, y as i32);
             if let Some(region) = survey_area(&grid, &pos, &mut surveyed) {
-                perimeter += region.compute_perimeter();
+                perimeter += region.compute_fence_cost();
             }
         }
     }
@@ -130,7 +130,7 @@ impl Region {
         self.coords.insert(coord);
     }
 
-    fn compute_perimeter(&self) -> i32 {
+    fn compute_fence_cost(&self) -> i32 {
         let mut perimeter: i32 = 0;
         let around: Vec<IVec2> = vec![
             IVec2::new(0, 1),
