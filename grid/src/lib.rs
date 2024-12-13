@@ -11,9 +11,9 @@ pub fn coord_greater(v1: &IVec2, v2: &IVec2) -> bool {
     false
 }
 
-pub fn create_visited_grid(rows: i32, cols: i32) -> Vec<Vec<bool>> {
-    let row: Vec<bool> = vec![false; cols as usize];
-    vec![row; rows as usize]
+pub fn create_visited_grid(rows: usize, cols: usize) -> Vec<Vec<bool>> {
+    let row: Vec<bool> = vec![false; cols];
+    vec![row; rows]
 }
 
 #[cfg(test)]

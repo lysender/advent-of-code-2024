@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+grid = { path = "../grid" }
 input = { path = "../input" }
 itertools.workspace = true
 glam.workspace = true
