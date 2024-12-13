@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 input = { path = "../input" }
 itertools.workspace = true
+glam.workspace = true
 nom.workspace = true
 nom-supreme.workspace = true
 
