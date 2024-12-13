@@ -20,7 +20,21 @@ mod tests {
     fn test_part1() {
         let input = get_puzzle_input("12-sample");
         let result = solve_puzzle(input.as_str());
-        assert_eq!(result, 0);
+        assert_eq!(result, 140);
+    }
+
+    #[test]
+    fn test_part1_sample2() {
+        let input = get_puzzle_input("12-sample");
+        let result = solve_puzzle(input.as_str());
+        assert_eq!(result, 172);
+    }
+
+    #[test]
+    fn test_part1_sample3() {
+        let input = get_puzzle_input("12-sample");
+        let result = solve_puzzle(input.as_str());
+        assert_eq!(result, 1930);
     }
 
     #[test]
