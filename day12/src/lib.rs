@@ -1,14 +1,18 @@
-use std::collections::{HashSet, VecDeque};
+use std::{
+    cmp::Ordering,
+    collections::{HashSet, VecDeque},
+};
 
 use glam::IVec2;
-use grid::create_visited_grid;
+use grid::{coord_greater, create_visited_grid};
+use itertools::Itertools;
 
 pub fn part1(input: &str) -> i32 {
     solve_puzzle(input)
 }
 
 pub fn part2(input: &str) -> i32 {
-    solve_puzzle(input)
+    solve_puzzle_discounted(input)
 }
 
 fn solve_puzzle(data: &str) -> i32 {
@@ -25,6 +29,46 @@ fn solve_puzzle(data: &str) -> i32 {
                 perimeter += region.compute_fence_cost();
             }
         }
+    }
+
+    perimeter
+}
+
+fn solve_puzzle_discounted(data: &str) -> i32 {
+    let grid = parse_data(data);
+
+    // Collect all regions
+    let mut surveyed = create_visited_grid(grid.rows as usize, grid.cols as usize);
+    let mut perimeter: i32 = 0;
+    let mut regions: Vec<Region> = Vec::new();
+
+    for x in 0..grid.rows {
+        for y in 0..grid.cols {
+            let pos = IVec2::new(x as i32, y as i32);
+            if let Some(region) = survey_area(&grid, &pos, &mut surveyed) {
+                regions.push(region);
+            }
+        }
+    }
+
+    // Compute region fence cost using a discounted pattern
+    // where 1 straight line is only counted as 1 side
+    for region in regions.iter() {
+        let mut coords: Vec<IVec2> = region.coords.clone().into_iter().collect_vec();
+        // Sort coords
+        coords.sort_by(|a, b| {
+            if coord_greater(a, b) {
+                Ordering::Greater
+            } else if a == b {
+                Ordering::Equal
+            } else {
+                Ordering::Less
+            }
+        });
+
+        println!("{:?}", coords);
+
+        // Start from the first element, move forward and collect straight line sides...
     }
 
     perimeter
@@ -184,7 +228,28 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = get_puzzle_input("12-sample");
-        let result = solve_puzzle(input.as_str());
-        assert_eq!(result, 140);
+        let result = solve_puzzle_discounted(input.as_str());
+        assert_eq!(result, 80);
+    }
+
+    #[test]
+    fn test_part2_sample2() {
+        let input = get_puzzle_input("12-sample2");
+        let result = solve_puzzle_discounted(input.as_str());
+        assert_eq!(result, 436);
+    }
+
+    #[test]
+    fn test_part2_sample4() {
+        let input = get_puzzle_input("12-sample4");
+        let result = solve_puzzle_discounted(input.as_str());
+        assert_eq!(result, 236);
+    }
+
+    #[test]
+    fn test_part2_sample5() {
+        let input = get_puzzle_input("12-sample5");
+        let result = solve_puzzle_discounted(input.as_str());
+        assert_eq!(result, 368);
     }
 }
