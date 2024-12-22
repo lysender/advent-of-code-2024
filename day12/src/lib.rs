@@ -39,7 +39,7 @@ fn solve_puzzle_discounted(data: &str) -> i32 {
 
     // Collect all regions
     let mut surveyed = create_visited_grid(grid.rows as usize, grid.cols as usize);
-    let mut perimeter: i32 = 0;
+    let mut cost: i32 = 0;
     let mut regions: Vec<Region> = Vec::new();
 
     for x in 0..grid.rows {
@@ -53,25 +53,14 @@ fn solve_puzzle_discounted(data: &str) -> i32 {
 
     // Compute region fence cost using a discounted pattern
     // where 1 straight line is only counted as 1 side
+    // simply count the number of turns
     for region in regions.iter() {
-        let mut coords: Vec<IVec2> = region.coords.clone().into_iter().collect_vec();
-        // Sort coords
-        coords.sort_by(|a, b| {
-            if coord_greater(a, b) {
-                Ordering::Greater
-            } else if a == b {
-                Ordering::Equal
-            } else {
-                Ordering::Less
-            }
-        });
-
-        println!("{:?}", coords);
-
-        // Start from the first element, move forward and collect straight line sides...
+        let turns = compute_outer_turns(&grid, region);
+        let region_cost = turns * region.coords.len() as i32;
+        cost += region_cost;
     }
 
-    perimeter
+    cost
 }
 
 fn parse_data(data: &str) -> Grid {
@@ -97,9 +86,10 @@ fn survey_area(grid: &Grid, pos: &IVec2, surveyed: &mut Vec<Vec<bool>>) -> Optio
         return None;
     }
 
+    // Use BFS to map all contagious plants that forms an area/polygon
     let mut visited: Vec<Vec<bool>> = create_visited_grid(grid.rows as usize, grid.cols as usize);
     let mut queue: VecDeque<IVec2> = VecDeque::new();
-    let mut region = Region::new();
+    let mut region = Region::new(plant.clone());
 
     visited[pos.x as usize][pos.y as usize] = true;
     queue.push_back(*pos);
@@ -133,6 +123,84 @@ fn survey_area(grid: &Grid, pos: &IVec2, surveyed: &mut Vec<Vec<bool>>) -> Optio
     Some(region)
 }
 
+fn compute_outer_turns(grid: &Grid, region: &Region) -> i32 {
+    let coords = region.sorted_coords();
+    let mut turns: i32 = 0;
+
+    // Start at the leftmost top edge and face upwards
+    let orig_coord = coords[0];
+    let orig_dir = Dir::Up;
+
+    let mut curr = orig_coord.clone();
+    let mut dir = orig_dir;
+
+    // Breaker
+    let mut count = 0;
+
+    loop {
+        match get_next_item(grid, region, &curr, dir) {
+            Some(next) => {
+                // Found an item, try the next item on the same direction
+                curr = next;
+            }
+            None => {
+                // Turn and try to get the next item
+                dir = match dir {
+                    Dir::Up => Dir::Right,
+                    Dir::Right => Dir::Down,
+                    Dir::Down => Dir::Left,
+                    Dir::Left => Dir::Up,
+                };
+
+                turns += 1;
+            }
+        };
+
+        if curr == orig_coord && dir == orig_dir {
+            // Arrived at where we started
+            break;
+        }
+
+        if count > 1000 {
+            println!("Breaker...");
+            break;
+        }
+        count += 1;
+    }
+
+    turns + 1
+}
+
+fn get_next_item(grid: &Grid, region: &Region, current: &IVec2, dir: Dir) -> Option<IVec2> {
+    // Move forward based on the direction
+    let pos = match dir {
+        Dir::Up => current + IVec2::new(-1, 0),
+        Dir::Right => current + IVec2::new(0, 1),
+        Dir::Down => current + IVec2::new(1, 0),
+        Dir::Left => current + IVec2::new(0, -1),
+    };
+
+    if !region.coords.contains(&pos) {
+        return None;
+    }
+    let Some(item) = grid.find_item(&pos) else {
+        return None;
+    };
+    if item != &region.plant {
+        return None;
+    }
+
+    Some(pos)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Dir {
+    Up,
+    Right,
+    Down,
+    Left,
+}
+
 #[derive(Debug)]
 struct Grid {
     matrix: Vec<Vec<char>>,
@@ -160,12 +228,14 @@ impl Grid {
 
 #[derive(Debug)]
 struct Region {
+    plant: char,
     coords: HashSet<IVec2>,
 }
 
 impl Region {
-    fn new() -> Self {
+    fn new(plant: char) -> Self {
         Self {
+            plant,
             coords: HashSet::new(),
         }
     }
@@ -195,6 +265,21 @@ impl Region {
             perimeter += current;
         }
         perimeter * self.coords.len() as i32
+    }
+
+    fn sorted_coords(&self) -> Vec<IVec2> {
+        let mut coords: Vec<IVec2> = self.coords.clone().into_iter().collect_vec();
+        // Sort coords
+        coords.sort_by(|a, b| {
+            if coord_greater(a, b) {
+                Ordering::Greater
+            } else if a == b {
+                Ordering::Equal
+            } else {
+                Ordering::Less
+            }
+        });
+        coords
     }
 }
 
@@ -237,6 +322,13 @@ mod tests {
         let input = get_puzzle_input("12-sample2");
         let result = solve_puzzle_discounted(input.as_str());
         assert_eq!(result, 436);
+    }
+
+    #[test]
+    fn test_part2_sample3() {
+        let input = get_puzzle_input("12-sample3");
+        let result = solve_puzzle_discounted(input.as_str());
+        assert_eq!(result, 1206);
     }
 
     #[test]
