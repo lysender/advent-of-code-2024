@@ -68,12 +68,25 @@ fn solve_puzzle_discounted(data: &str) -> i32 {
     // Compute region fence cost using a discounted pattern
     // where 1 straight line is only counted as 1 side
     // simply count the number of turns
-    for (_, region) in region_map.iter_mut() {
+    for (_, region) in region_map.iter() {
         // Compute for the outer perimeter
-        let outer_cost = region.outer_turns * region.coords.len();
+        let outer_cost = region.sides * region.coords.len();
+        let mut inner_cost = 0;
 
-        // Also compute perimeters of any regions inside this region
-        cost += outer_cost;
+        println!("outer region: {:?}", region);
+
+        // Try all other regions if they are inside,
+        // then simply compute via sides
+        for (k, inner_region) in region_map.iter() {
+            if k != &region.id {
+                if region_within(&grid, region, inner_region) {
+                    println!("{} is within {}", inner_region.plant, region.plant);
+                    inner_cost += inner_region.sides * inner_region.coords.len();
+                }
+            }
+        }
+
+        cost += inner_cost + outer_cost;
     }
 
     cost as i32
@@ -144,68 +157,32 @@ fn survey_area(
     Some(region)
 }
 
-fn survey_area_within(
-    grid: &Grid,
-    region_map: &HashMap<usize, Region>,
-    region: &Region,
-    pos: &IVec2,
-    surveyed: &mut Vec<Vec<bool>>,
-    next_id: usize,
-) -> Option<usize> {
-    let Some(plant) = grid.find_item(pos) else {
-        // Off the grid
-        return None;
-    };
+fn region_within(grid: &Grid, current_region: &Region, region: &Region) -> bool {
+    // Get the first item of the region and use ray tracing
+    // to know if region is inside current region
+    let mut current = Some(IVec2::new(region.min.x, 0));
+    let mut passes: usize = 0;
+    let mut hit: bool = false;
 
-    if surveyed[pos.x as usize][pos.y as usize] {
-        // Already surveyed
-        return None;
-    }
-
-    // If part of the current region, skip it
-    if region.coords.contains(pos) {
-        return None;
-    }
-
-    // Try ray tracing to see if this position is inside the current region
-    let mut hits: usize = 0;
-
-    // Use BFS to map all contagious plants that forms an area/polygon
-    let mut visited: Vec<Vec<bool>> = create_visited_grid(grid.rows as usize, grid.cols as usize);
-    let mut queue: VecDeque<IVec2> = VecDeque::new();
-    let mut region = Region::new(next_id, *plant);
-
-    visited[pos.x as usize][pos.y as usize] = true;
-    queue.push_back(*pos);
-
-    let around: Vec<IVec2> = vec![
-        IVec2::new(0, 1),
-        IVec2::new(1, 0),
-        IVec2::new(0, -1),
-        IVec2::new(-1, 0),
-    ];
-
-    while let Some(current) = queue.pop_front() {
-        // Mark as surveyed so we don't survey it again next time
-        surveyed[current.x as usize][current.y as usize] = true;
-
-        region.add_coord(current);
-
-        // Find neighbors
-        for npos in around.iter() {
-            let next = npos + current;
-            // Find sorrounding plants of the same species
-            if let Some(next_item) = grid.find_item(&next) {
-                if next_item == plant && !visited[next.x as usize][next.y as usize] {
-                    visited[next.x as usize][next.y as usize] = true;
-                    queue.push_back(next);
-                }
-            }
+    while let Some(pos) = current {
+        if pos == region.min {
+            hit = true;
         }
+
+        if grid.find_item(&pos).is_none() {
+            break;
+        }
+        if hit && current_region.edges.contains(&pos) {
+            passes += 1;
+        }
+        current = Some(pos + IVec2::new(0, 1));
     }
 
-    // Some(region)
-    None
+    if passes == 0 {
+        return false;
+    }
+
+    passes % 2 == 0
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -214,6 +191,16 @@ enum Dir {
     Right,
     Down,
     Left,
+}
+
+/// Turn directions based on current orientation
+fn dir_dirs(dir: Dir) -> (Dir, Dir) {
+    match dir {
+        Dir::Up => (Dir::Left, Dir::Right),
+        Dir::Right => (Dir::Up, Dir::Down),
+        Dir::Down => (Dir::Right, Dir::Left),
+        Dir::Left => (Dir::Down, Dir::Up),
+    }
 }
 
 #[derive(Debug)]
@@ -245,7 +232,7 @@ impl Grid {
 struct Region {
     id: usize,
     plant: char,
-    outer_turns: usize,
+    sides: usize,
     coords: HashSet<IVec2>,
     edges: HashSet<IVec2>,
     min: IVec2,
@@ -257,7 +244,7 @@ impl Region {
         Self {
             id,
             plant,
-            outer_turns: 0,
+            sides: 0,
             coords: HashSet::new(),
             edges: HashSet::new(),
             min: IVec2::new(0, 0),
@@ -309,45 +296,69 @@ impl Region {
 
     fn compute_edges(&mut self, grid: &Grid) {
         let coords = self.sorted_coords();
+        if coords.len() == 0 {
+            return;
+        }
+
         self.min = *coords.first().unwrap();
         self.max = *coords.last().unwrap();
 
         let mut turns: usize = 0;
 
-        // Start at the leftmost top edge and face upwards
+        if coords.len() == 1 {
+            self.edges.insert(self.min.clone());
+            self.sides = 4;
+            return;
+        }
+
+        // Start at the leftmost top edge and face right
         let orig_coord = self.min;
-        let orig_dir = Dir::Up;
+        let orig_dir = Dir::Right;
 
         let mut curr = orig_coord.clone();
         let mut dir = orig_dir;
 
         loop {
-            match self.get_next_item(grid, &curr, dir) {
-                Some(next) => {
-                    self.edges.insert(next.clone());
+            let (out_dir, in_dir) = dir_dirs(dir);
+            // Try to move outward first
+            if let Some(next) = self.get_next_item(grid, &curr, out_dir) {
+                // We just turned
+                self.edges.insert(next.clone());
+                curr = next;
+                dir = out_dir;
+                turns += 1;
+                continue;
+            }
 
-                    // Found an item, try the next item on the same direction
+            // Then try moving forward
+            if let Some(next) = self.get_next_item(grid, &curr, dir) {
+                self.edges.insert(next.clone());
+                // Move forward, no turn
+                curr = next;
+                continue;
+            }
+
+            // Lastly, try moving inward
+            if let Some(next) = self.get_next_item(grid, &curr, in_dir) {
+                if !self.edges.contains(&next) {
+                    // We just turned with a match
+                    self.edges.insert(next.clone());
                     curr = next;
                 }
-                None => {
-                    // Turn and try to get the next item
-                    dir = match dir {
-                        Dir::Up => Dir::Right,
-                        Dir::Right => Dir::Down,
-                        Dir::Down => Dir::Left,
-                        Dir::Left => Dir::Up,
-                    };
+            }
 
-                    turns += 1;
-                }
-            };
+            // If we don't hit anything, just turn inward
+            dir = in_dir;
+            turns += 1;
 
             if curr == orig_coord && dir == orig_dir {
                 // Arrived at where we started
                 break;
             }
         }
-        self.outer_turns = turns + 1;
+
+        println!("turns: {}", turns);
+        self.sides = turns;
     }
 
     fn get_next_item(&self, grid: &Grid, current: &IVec2, dir: Dir) -> Option<IVec2> {
